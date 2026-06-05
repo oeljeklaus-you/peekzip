@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PeekZip - Preview Archives Before Unzip</title>
+  <meta name="description" content="PeekZip helps you preview archive files before extracting them. Open, search, inspect, and extract only what you need." />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --accent: #38bdf8;
+      --border: rgba(255,255,255,0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0, #0f172a 45%, #020617 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 72px 24px;
+    }
+    .hero {
+      text-align: center;
+      padding: 56px 0 48px;
+    }
+    h1 {
+      font-size: clamp(40px, 7vw, 72px);
+      line-height: 1.05;
+      margin: 0 0 20px;
+      letter-spacing: -0.05em;
+    }
+    .subtitle {
+      font-size: 22px;
+      color: var(--muted);
+      max-width: 720px;
+      margin: 0 auto 32px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      margin-bottom: 24px;
+      background: rgba(255,255,255,0.04);
+    }
+    .cta {
+      display: inline-block;
+      padding: 14px 22px;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #082f49;
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 48px;
+    }
+    .card {
+      background: rgba(17,24,39,0.72);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 24px;
+      min-height: 180px;
+    }
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 19px;
+    }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .section {
+      margin-top: 64px;
+      padding: 34px;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: rgba(255,255,255,0.04);
+    }
+    .section h2 {
+      margin-top: 0;
+      font-size: 30px;
+      letter-spacing: -0.03em;
+    }
+    ul {
+      padding-left: 22px;
+      color: var(--muted);
+    }
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 14px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      .wrap { padding: 40px 18px; }
+      .hero { padding-top: 36px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="badge">macOS archive preview and extraction tool</div>
+      <h1>Preview archives before you unzip.</h1>
+      <p class="subtitle">
+        PeekZip helps you open archive files, preview contents, search file names,
+        inspect risky items, and extract only what you need.
+      </p>
+      <a class="cta" href="#">Available on the Mac App Store</a>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h3>Preview before extracting</h3>
+        <p>Look inside archive files first, so you know exactly what you are about to extract.</p>
+      </div>
+      <div class="card">
+        <h3>Search archive contents</h3>
+        <p>Find files inside compressed packages without blindly unpacking everything.</p>
+      </div>
+      <div class="card">
+        <h3>Extract with control</h3>
+        <p>Extract selected files or folders instead of expanding the whole archive.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Built for everyday archive work</h2>
+      <ul>
+        <li>Preview archive contents before unzip</li>
+        <li>Browse files by name, folder, and type</li>
+        <li>Search inside archive file lists</li>
+        <li>Extract selected files or folders</li>
+        <li>Identify risky file types before opening them</li>
+        <li>Local-first design with no account required</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>PeekZip Pro</h2>
+      <p>
+        PeekZip Pro unlocks advanced archive workflows for users who handle larger
+        or more complex compressed files.
+      </p>
+      <ul>
+        <li>Batch archive workflows</li>
+        <li>Large archive indexing</li>
+        <li>Password archive support</li>
+        <li>Risk file detection</li>
+        <li>Advanced extraction tools</li>
+        <li>Type-based extraction for images, PDFs, videos, and other files</li>
+      </ul>
+    </section>
+
+    <footer>
+      <span>© 2026 YUJIE YOU. All rights reserved.</span>
+      <span>
+        <a href="support.html">Support</a> ·
+        <a href="privacy.html">Privacy Policy</a>
+      </span>
+    </footer>
+  </main>
+</body>
+</html>
