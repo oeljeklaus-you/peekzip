@@ -12,11 +12,11 @@ extension RiskLevel {
     var label: String {
         switch self {
         case .high:
-            return "Executable / Script / Installer"
+            return L10n.string(.badgeRisky)
         case .medium:
-            return "Potentially risky"
+            return L10n.string(.badgeRisky)
         case .notice:
-            return "Hidden or system-generated"
+            return L10n.string(.archiveHiddenBadge)
         }
     }
 }
@@ -39,31 +39,31 @@ enum RiskReason: String, Codable, CaseIterable, Hashable, Sendable {
     var label: String {
         switch self {
         case .macOSAppBundle:
-            return "macOS app bundle"
+            return L10n.string(.badgeApp)
         case .macOSAppExecutablePath:
-            return "macOS app executable path"
+            return L10n.string(.badgeApp)
         case .macOSInstaller:
-            return "macOS installer package"
+            return L10n.string(.badgeInstaller)
         case .macOSDiskImage:
-            return "macOS disk image"
+            return L10n.string(.badgeDiskImage)
         case .shellScript:
-            return "Shell script"
+            return L10n.string(.badgeScript)
         case .windowsExecutable:
-            return "Windows executable"
+            return L10n.string(.badgeWindows)
         case .windowsScript:
-            return "Windows script"
+            return L10n.string(.badgeWindows)
         case .powershellScript:
-            return "PowerShell script"
+            return L10n.string(.badgePowerShell)
         case .javaArchive:
-            return "Java archive"
+            return L10n.string(.badgeJava)
         case .scriptFile:
-            return "Script file"
+            return L10n.string(.badgeScript)
         case .suspiciousExecutableName:
-            return "Executable-looking file name"
+            return L10n.string(.badgeRisky)
         case .hiddenOrJunk:
-            return "Hidden or system-generated file"
+            return L10n.string(.archiveHiddenBadge)
         case .sensitiveConfig:
-            return "Sensitive configuration file"
+            return L10n.string(.badgeConfig)
         }
     }
 }

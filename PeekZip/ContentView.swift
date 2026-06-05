@@ -3,14 +3,50 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ContentView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject private var store = ArchiveStore.shared
+    @ObservedObject private var preferences = AppPreferences.shared
     @State private var hoveredEntryID: UUID?
     @State private var windowSize: CGSize = .zero
     @State private var showInspectorPopover = false
+    @State private var isHoveringOpenArchiveButton = false
+    @State private var isHoveringSampleArchiveButton = false
 
     private let supportedExtensions = [
         "zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "tbz2", "tbz", "xz", "txz", "cpio", "xar"
     ]
+
+    private var isDarkMode: Bool {
+        colorScheme == .dark
+    }
+
+    private var emptyPrimaryCardFill: Color {
+        isDarkMode ? Color(nsColor: .controlBackgroundColor).opacity(0.92) : Color.white.opacity(0.84)
+    }
+
+    private var emptyFeatureCardFill: Color {
+        isDarkMode ? Color(nsColor: .controlBackgroundColor).opacity(0.86) : Color(nsColor: .controlBackgroundColor).opacity(0.72)
+    }
+
+    private var emptyElevatedTileFill: Color {
+        isDarkMode ? Color.white.opacity(0.08) : Color.white.opacity(0.68)
+    }
+
+    private var emptyChipFill: Color {
+        isDarkMode ? Color.white.opacity(0.10) : Color.white.opacity(0.62)
+    }
+
+    private var emptyDropZoneFill: Color {
+        isDarkMode ? Color.white.opacity(0.08) : Color.white.opacity(0.55)
+    }
+
+    private var emptyHairlineStroke: Color {
+        isDarkMode ? Color.white.opacity(0.10) : Color.white.opacity(0.35)
+    }
+
+    private var emptyBorderStroke: Color {
+        isDarkMode ? Color.black.opacity(0.35) : Color.black.opacity(0.065)
+    }
 
     private var showSidebar: Bool {
         layoutMetrics.showSidebar
@@ -27,11 +63,6 @@ struct ContentView: View {
             hasSelection: store.selectedEntry != nil,
             hasArchiveLoaded: store.hasArchiveLoaded
         )
-    }
-
-    private var emptyStateMetrics: EmptyStateMetrics {
-        let metrics = EmptyStateMetrics(width: windowSize.width, height: windowSize.height)
-        return metrics
     }
 
     var body: some View {
@@ -72,13 +103,12 @@ struct ContentView: View {
             }
             .onAppear {
                 windowSize = proxy.size
-                debugEmptyStateMetrics()
             }
             .onChange(of: proxy.size) { newSize in
                 windowSize = newSize
-                debugEmptyStateMetrics()
             }
         }
+        .id(preferences.selectedLanguageCode ?? "system")
         .environment(\.layoutDirection, L10n.isRTL ? .rightToLeft : .leftToRight)
         .toolbar { }
         .onDrop(of: [UTType.fileURL], isTargeted: $store.isDropTargeted) { providers in
@@ -100,11 +130,11 @@ struct ContentView: View {
             ProPaywallView(
                 state: state,
                 onUnlock: {
-                    store.unlockProForTesting()
+                    await store.handleProUnlockRequest()
                 },
-                    onRestorePurchase: {
-                        store.showToast(L10n.string(.archiveRestorePurchaseFuture))
-                    },
+                onRestorePurchase: {
+                    await store.restorePurchases()
+                },
                 onContinueFree: {
                     store.continueFreeFromPaywall()
                 }
@@ -310,284 +340,513 @@ struct ContentView: View {
     }
 
     private var emptyHomeWorkspace: some View {
-        ScrollView(.vertical, showsIndicators: windowSize.height < 760) {
-            VStack(spacing: emptyStateMetrics.sectionSpacing) {
-                if emptyStateMetrics.useTwoColumns {
-                    emptyHomeHeader
+        GeometryReader { proxy in
+            let metrics = EmptyStateMetrics(size: proxy.size)
 
-                    HStack(alignment: .top, spacing: 20) {
-                        emptyPrimaryCard
-                            .frame(minWidth: 520, idealWidth: 560, maxWidth: 620, alignment: .leading)
+            ZStack {
+                // 修改点 1：背景只保留极轻的品牌氛围，避免整页雾化。
+                Color(nsColor: .windowBackgroundColor)
+                    .allowsHitTesting(false)
 
-                        emptyFeatureValuePanel
-                            .frame(width: emptyStateMetrics.featurePanelWidth, alignment: .leading)
+                RadialGradient(
+                    colors: [
+                        Color.orange.opacity(metrics.isExpanded ? 0.018 : 0.012),
+                        Color.clear
+                    ],
+                    center: .topLeading,
+                    startRadius: 80,
+                    endRadius: 520
+                )
+                .blur(radius: 28)
+                .allowsHitTesting(false)
+
+                RadialGradient(
+                    colors: [
+                        Color.accentColor.opacity(metrics.isExpanded ? 0.010 : 0.006),
+                        Color.clear
+                    ],
+                    center: .center,
+                    startRadius: 120,
+                    endRadius: 620
+                )
+                .blur(radius: 32)
+                .allowsHitTesting(false)
+
+                Group {
+                    if proxy.size.height < 560 || proxy.size.width < 620 {
+                        ScrollView(.vertical, showsIndicators: false) {
+                            emptyStateContent(metrics: metrics)
+                                .padding(.horizontal, metrics.horizontalPadding)
+                                .padding(.vertical, metrics.verticalPadding)
+                                .frame(maxWidth: .infinity)
+                        }
+                    } else {
+                        emptyStateContent(metrics: metrics)
+                            .padding(.horizontal, metrics.horizontalPadding)
+                            .padding(.vertical, metrics.verticalPadding)
+                            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .center)
                     }
-                    .frame(maxWidth: emptyStateMetrics.contentWidth, alignment: .center)
-                } else {
-                    emptyHomeHeaderCompact
-
-                    VStack(spacing: 16) {
-                        emptyPrimaryCardCompact
-                        emptyFeatureValuePanel
-                    }
-                    .frame(maxWidth: emptyStateMetrics.contentWidth)
                 }
             }
-            .padding(.vertical, emptyStateMetrics.verticalPadding)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .frame(minHeight: max(windowSize.height - 32, 0), alignment: windowSize.height < 760 ? .top : .center)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private func emptyStateContent(metrics: EmptyStateMetrics) -> some View {
+        // 修改点 2：把空状态明确拆成 Hero 和 Core Content，两层结构更清晰。
+        Group {
+            if metrics.isExpanded {
+                HStack(alignment: .top, spacing: metrics.columnSpacing) {
+                    VStack(alignment: .leading, spacing: metrics.heroToBodySpacing) {
+                        emptyStateHeader(metrics: metrics)
+
+                        primaryActionPanel(metrics: metrics)
+                            .frame(width: metrics.primaryPanelWidth)
+                            .frame(height: metrics.panelHeight, alignment: .top)
+                            .frame(minHeight: metrics.primaryPanelMinHeight, alignment: .top)
+                    }
+                    .frame(width: metrics.primaryPanelWidth, alignment: .leading)
+
+                    featureValuePanel(metrics: metrics)
+                        .frame(width: metrics.featurePanelWidth)
+                        .frame(height: metrics.panelHeight, alignment: .top)
+                        .padding(.top, metrics.featurePanelTopInset)
+                }
+                .frame(width: metrics.contentWidth)
+            } else {
+                VStack(alignment: .leading, spacing: metrics.heroToBodySpacing) {
+                    emptyStateHeader(metrics: metrics)
+
+                    if metrics.useTwoColumns {
+                        HStack(alignment: .top, spacing: metrics.columnSpacing) {
+                            primaryActionPanel(metrics: metrics)
+                                .frame(width: metrics.primaryPanelWidth)
+                                .frame(height: metrics.panelHeight, alignment: .top)
+                                .frame(minHeight: metrics.primaryPanelMinHeight, alignment: .top)
+
+                            featureValuePanel(metrics: metrics)
+                                .frame(width: metrics.featurePanelWidth)
+                                .frame(height: metrics.panelHeight, alignment: .top)
+                                .padding(.top, metrics.featurePanelTopInset)
+                        }
+                        .frame(width: metrics.contentWidth)
+                    } else {
+                        VStack(spacing: metrics.columnSpacing) {
+                            primaryActionPanel(metrics: metrics)
+                            featureValuePanel(metrics: metrics)
+                        }
+                        .frame(width: metrics.contentWidth)
+                    }
+                }
+            }
+        }
+        .frame(width: metrics.contentWidth, alignment: .leading)
+        .scaleEffect(metrics.shouldScaleContent ? metrics.contentScale : 1.0)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .offset(y: metrics.contentYOffset)
     }
 
-    private var emptyHomeHeader: some View {
-        HStack(alignment: .center, spacing: emptyStateMetrics.headerSpacing) {
-            AppIconView(size: emptyStateMetrics.iconSize)
+    private func emptyStateHeader(metrics: EmptyStateMetrics) -> some View {
+        // 修改点 3：Hero 更像产品首页头部，而不是普通标题块。
+        HStack(alignment: .center, spacing: metrics.headerSpacing) {
+            AppIconView(size: metrics.heroIconSize)
+                .shadow(color: Color.orange.opacity(metrics.isExpanded ? 0.12 : 0.07), radius: metrics.isExpanded ? 12 : 8, y: metrics.isExpanded ? 5 : 3)
+                .background {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.orange.opacity(metrics.isExpanded ? 0.08 : 0.05),
+                                    Color.clear
+                                ],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: metrics.heroIconSize * 0.60
+                            )
+                        )
+                        .frame(width: metrics.heroIconSize, height: metrics.heroIconSize)
+                        .blur(radius: metrics.isExpanded ? 8 : 6)
+                }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: metrics.heroTextSpacing) {
                 Text(ui(.emptyHomeTitle))
-                    .font(.system(size: emptyStateMetrics.titleFontSize, weight: .bold, design: .rounded))
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.9)
+                    .font(.system(size: metrics.titleSize, weight: .bold, design: .rounded))
+                    .tracking(metrics.heroTitleTracking)
+                    .foregroundStyle(.primary)
+                    .lineLimit(metrics.isExpanded ? 1 : 2)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(ui(.emptyHomeSubtitle))
-                    .font(.system(size: emptyStateMetrics.subtitleFontSize))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: metrics.subtitleSize, weight: .regular))
+                    .foregroundStyle(Color.secondary.opacity(0.88))
                     .lineLimit(2)
-                    .minimumScaleFactor(0.9)
-                    .frame(maxWidth: emptyStateMetrics.subtitleMaxWidth, alignment: .leading)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(width: emptyStateMetrics.contentWidth)
-    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: metrics.heroSubtitleWidth, alignment: .leading)
 
-    private var emptyHomeHeaderCompact: some View {
-        VStack(alignment: .center, spacing: 12) {
-            AppIconView(size: emptyStateMetrics.iconSize)
-
-            VStack(alignment: .center, spacing: 6) {
-                Text(ui(.emptyHomeTitle))
-                    .font(.system(size: emptyStateMetrics.titleFontSize, weight: .bold, design: .rounded))
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.9)
-                    .multilineTextAlignment(.center)
-
-                Text(ui(.emptyHomeSubtitle))
-                    .font(.system(size: emptyStateMetrics.subtitleFontSize))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.9)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var emptyPrimaryCard: some View {
-        VStack(alignment: .leading, spacing: emptyStateMetrics.primaryCardSpacing) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(ui(.emptyPrimaryTitle))
-                    .font(.system(size: emptyStateMetrics.primaryTitleFontSize, weight: .semibold))
-                    .foregroundStyle(.primary)
-
-                Text(ui(.emptyPrimarySubtitle))
-                    .font(.system(size: emptyStateMetrics.primarySubtitleFontSize))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            HStack(spacing: 10) {
-                Button {
-                    openArchive()
-                } label: {
-                    Label(ui(.archiveEmptyOpenArchive), systemImage: "plus")
+                Label {
+                    Text("ZIP · RAR · 7Z · TAR")
+                        .font(.system(size: metrics.heroValueSize, weight: .semibold))
+                        .foregroundStyle(Color.secondary.opacity(0.84))
+                        .lineLimit(1)
+                } icon: {
+                    Image(systemName: "archivebox")
+                        .font(.system(size: metrics.heroValueSize, weight: .semibold))
+                        .foregroundStyle(Color.accentColor.opacity(0.9))
                 }
-                .buttonStyle(PrimaryActionButtonStyle())
-
-                Button {
-                    openArchive()
-                } label: {
-                    Text(ui(.archiveEmptyTrySampleArchive))
-                }
-                .buttonStyle(SecondaryActionButtonStyle())
+                .padding(.top, 4)
             }
+            .padding(.trailing, 12)
 
-            dropZone
+            Spacer(minLength: 0)
         }
-        .padding(emptyStateMetrics.primaryCardPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+        .padding(.leading, metrics.heroLeadingInset)
+        .padding(.vertical, metrics.heroVerticalPadding)
+        .frame(width: metrics.heroFrameWidth, alignment: .leading)
+        .frame(maxWidth: metrics.isExpanded ? metrics.primaryPanelWidth : metrics.contentWidth, alignment: metrics.isExpanded ? .center : .leading)
     }
 
-    private var emptyPrimaryCardCompact: some View {
-        VStack(alignment: .leading, spacing: emptyStateMetrics.primaryCardSpacing) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(ui(.emptyPrimaryTitle))
-                    .font(.system(size: emptyStateMetrics.primaryTitleFontSize, weight: .semibold))
-                    .foregroundStyle(.primary)
+    private func primaryActionPanel(metrics: EmptyStateMetrics) -> some View {
+        // 修改点 4：左侧主卡按“标题 -> 按钮 -> 拖拽区”重组节奏，突出主入口。
+        VStack(alignment: .leading, spacing: metrics.primaryPanelSpacing) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(ui(.emptyPrimaryTitle))
+                        .font(.system(size: metrics.primaryTitleSize, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
 
-                Text(ui(.emptyPrimarySubtitle))
-                    .font(.system(size: emptyStateMetrics.primarySubtitleFontSize))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    Text(ui(.emptyPrimarySubtitle))
+                        .font(.system(size: metrics.primarySubtitleSize))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Spacer(minLength: 12)
+
+                smallArchiveBadge(metrics: metrics)
             }
 
-            if emptyStateMetrics.availableWidth < 560 {
+            if metrics.useVerticalActionButtons {
                 VStack(spacing: 8) {
-                    Button {
-                        openArchive()
-                    } label: {
-                        Label(ui(.archiveEmptyOpenArchive), systemImage: "plus")
-                    }
-                    .buttonStyle(PrimaryActionButtonStyle())
-                    .frame(maxWidth: .infinity)
+                    openArchiveButton(metrics: metrics)
+                        .frame(maxWidth: .infinity)
 
-                    Button {
-                        openArchive()
-                    } label: {
-                        Text(ui(.archiveEmptyTrySampleArchive))
-                    }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .frame(maxWidth: .infinity)
+                    trySampleButton(metrics: metrics)
+                        .frame(maxWidth: .infinity)
                 }
             } else {
-                HStack(spacing: 10) {
-                    Button {
-                        openArchive()
-                    } label: {
-                        Label(ui(.archiveEmptyOpenArchive), systemImage: "plus")
-                    }
-                    .buttonStyle(PrimaryActionButtonStyle())
-
-                    Button {
-                        openArchive()
-                    } label: {
-                        Text(ui(.archiveEmptyTrySampleArchive))
-                    }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                HStack(spacing: 12) {
+                    openArchiveButton(metrics: metrics)
+                    trySampleButton(metrics: metrics)
                 }
             }
 
-            dropZone
+            compactDropZone(metrics: metrics)
         }
-        .padding(emptyStateMetrics.primaryCardPadding)
+        .padding(metrics.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+        .background(primaryPanelBackground(metrics: metrics))
+        .clipShape(RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.045), radius: 14, x: 0, y: 8)
     }
 
-    private var emptyFeatureValuePanel: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(ui(.emptyFeaturesTitle))
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.primary)
+    private func featureValuePanel(metrics: EmptyStateMetrics) -> some View {
+        // 修改点 5：右侧不再是说明列表，而是卡片式能力摘要面板。
+        VStack(alignment: .leading, spacing: metrics.featurePanelSpacing) {
+            HStack(spacing: 10) {
+                Text(ui(.emptyFeaturesTitle))
+                    .font(.system(size: metrics.featuresTitleSize, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
 
-            featureRow(
-                icon: "magnifyingglass",
-                title: ui(.emptyFeatureSearchTitle),
-                subtitle: ui(.emptyFeatureSearchSubtitle)
-            )
+                Spacer(minLength: 0)
 
-            featureRow(
-                icon: "square.grid.2x2",
-                title: ui(.emptyFeatureBrowseTitle),
-                subtitle: ui(.emptyFeatureBrowseSubtitle)
-            )
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary.opacity(0.6))
+            }
 
-            featureRow(
-                icon: "tray.and.arrow.down",
-                title: ui(.emptyFeatureExtractTitle),
-                subtitle: ui(.emptyFeatureExtractSubtitle)
-            )
-
-            Divider()
-                .padding(.vertical, 2)
-
-            supportedFormatsCompact
-        }
-        .padding(emptyStateMetrics.cardPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.45))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.black.opacity(0.045), lineWidth: 1)
-        )
-    }
-
-    private func featureRow(icon: String, title: String, subtitle: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
-                .frame(width: 24, height: 24)
-                .foregroundStyle(Color.accentColor)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.accentColor.opacity(0.08))
+            VStack(spacing: metrics.featureRowSpacing) {
+                featureRow(
+                    icon: "magnifyingglass",
+                    title: ui(.emptyFeatureSearchTitle),
+                    subtitle: ui(.emptyFeatureSearchSubtitle),
+                    metrics: metrics
                 )
 
-            VStack(alignment: .leading, spacing: 2) {
+                featureRow(
+                    icon: "square.grid.2x2",
+                    title: ui(.emptyFeatureBrowseTitle),
+                    subtitle: ui(.emptyFeatureBrowseSubtitle),
+                    metrics: metrics
+                )
+
+                featureRow(
+                    icon: "tray.and.arrow.down",
+                    title: ui(.emptyFeatureExtractTitle),
+                    subtitle: ui(.emptyFeatureExtractSubtitle),
+                    metrics: metrics
+                )
+            }
+
+            Spacer(minLength: metrics.featurePanelFlexibleGap)
+
+            Divider()
+                .opacity(0.6)
+
+            supportedFormatsCompact(metrics: metrics)
+        }
+        .padding(metrics.cardPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(featurePanelBackground(metrics: metrics))
+        .clipShape(RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.032), radius: 10, x: 0, y: 6)
+    }
+
+    private func featureRow(icon: String, title: String, subtitle: String, metrics: EmptyStateMetrics) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: metrics.featureIconCornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.accentColor.opacity(0.12),
+                                Color.accentColor.opacity(0.07)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                RoundedRectangle(cornerRadius: metrics.featureIconCornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.55), lineWidth: 1)
+
+                Image(systemName: icon)
+                    .font(.system(size: metrics.featureIconSize, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+            }
+            .frame(width: metrics.featureIconTileSize, height: metrics.featureIconTileSize)
+
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 13.5, weight: .semibold))
-                    .lineLimit(1)
+                    .font(.system(size: metrics.featureRowTitleSize, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.85)
 
                 Text(subtitle)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: metrics.featureRowSubtitleSize))
+                    .foregroundStyle(Color.secondary.opacity(0.82))
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
             }
 
             Spacer(minLength: 0)
         }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: metrics.featureRowCornerRadius, style: .continuous)
+                .fill(emptyElevatedTileFill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: metrics.featureRowCornerRadius, style: .continuous)
+                .stroke(isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.04), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.018), radius: 5, y: 2)
     }
 
-    private var supportedFormatsCompact: some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func supportedFormatsCompact(metrics: EmptyStateMetrics) -> some View {
+        VStack(alignment: .leading, spacing: metrics.tier == .expanded ? 10 : 8) {
             Text(ui(.emptyFormatsTitle))
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .font(.system(size: metrics.formatsTitleSize, weight: .semibold))
+                .foregroundStyle(Color.secondary.opacity(0.85))
 
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 48), spacing: 6)],
-                spacing: 6
+                columns: [GridItem(.adaptive(minimum: metrics.formatPillMinWidth), spacing: metrics.formatGridSpacing)],
+                alignment: .leading,
+                spacing: metrics.formatGridSpacing
             ) {
-                formatPill("ZIP")
-                formatPill("RAR")
-                formatPill("7Z")
-                formatPill("TAR")
-                formatPill("GZ")
-                formatPill("BZ2")
-                formatPill("XZ")
+                formatPill("ZIP", metrics: metrics)
+                formatPill("RAR", metrics: metrics)
+                formatPill("7Z", metrics: metrics)
+                formatPill("TAR", metrics: metrics)
+                formatPill("GZ", metrics: metrics)
+                formatPill("BZ2", metrics: metrics)
+                formatPill("XZ", metrics: metrics)
             }
         }
     }
 
-    private func formatPill(_ text: String) -> some View {
+    private func formatPill(_ text: String, metrics: EmptyStateMetrics) -> some View {
         Text(text)
-            .font(.system(size: 11.5, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color.secondary.opacity(0.08), in: Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(Color.secondary.opacity(0.10), lineWidth: 1)
+            .font(.system(size: metrics.formatPillFontSize, weight: .semibold))
+            .foregroundStyle(Color.secondary.opacity(0.90))
+            .padding(.horizontal, metrics.tier == .expanded ? 10 : 8)
+            .frame(minWidth: metrics.formatPillMinWidth, minHeight: metrics.formatPillHeight)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(emptyChipFill)
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.045), lineWidth: 1)
+            )
+    }
+
+    private func compactDropZone(metrics: EmptyStateMetrics) -> some View {
+        // 修改点 6：DropZone 作为辅助入口保持清晰可交互，但不抢主按钮焦点。
+        ZStack {
+            RoundedRectangle(cornerRadius: metrics.dropZoneCornerRadius, style: .continuous)
+                .fill(emptyDropZoneFill)
+
+            RoundedRectangle(cornerRadius: metrics.dropZoneCornerRadius, style: .continuous)
+                .stroke(style: StrokeStyle(lineWidth: 1.2, dash: [7, 7]))
+                .foregroundStyle(Color.secondary.opacity(0.28))
+
+            VStack(spacing: metrics.tier == .expanded ? 7 : 5) {
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.11))
+                        .frame(width: metrics.dropZoneBadgeSize, height: metrics.dropZoneBadgeSize)
+
+                    Image(systemName: "tray.and.arrow.down")
+                        .font(.system(size: metrics.dropZoneGlyphSize, weight: .medium))
+                        .foregroundStyle(Color.accentColor.opacity(0.95))
+                }
+
+                Text(ui(.archiveDropTitle))
+                    .font(.system(size: metrics.dropZoneTitleSize, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
+
+                Text(ui(.archiveDropSubtitle))
+                    .font(.system(size: metrics.dropZoneSubtitleSize))
+                    .foregroundStyle(Color.secondary.opacity(0.85))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.9)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, metrics.tier == .expanded ? 2 : 0)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: metrics.dropZoneHeight)
+    }
+
+    private func smallArchiveBadge(metrics: EmptyStateMetrics) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "archivebox.fill")
+                .font(.system(size: 11, weight: .semibold))
+            Text("ZIP · RAR · 7Z")
+                .font(.system(size: metrics.archiveBadgeFontSize, weight: .semibold))
+                .lineLimit(1)
+        }
+        .foregroundStyle(Color.secondary.opacity(0.85))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(emptyChipFill)
+        )
+        .overlay(
+            Capsule()
+                .stroke(isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.05), lineWidth: 1)
+        )
+    }
+
+    private func openArchiveButton(metrics: EmptyStateMetrics) -> some View {
+        Button {
+            openArchive()
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: "plus")
+                    .font(.system(size: metrics.actionButtonFontSize - 0.5, weight: .semibold))
+
+                Text(ui(.archiveEmptyOpenArchive))
+                    .font(.system(size: metrics.actionButtonFontSize, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
+            }
+            .foregroundStyle(.white)
+            .frame(minWidth: metrics.openButtonMinWidth, minHeight: metrics.actionButtonHeight)
+            .frame(maxWidth: metrics.useVerticalActionButtons ? .infinity : nil)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.accentColor.opacity(isHoveringOpenArchiveButton ? 1.0 : 0.96),
+                                Color.accentColor.opacity(isHoveringOpenArchiveButton ? 0.94 : 0.84)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottom
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.white.opacity(isHoveringOpenArchiveButton ? 0.18 : 0.10), lineWidth: 1)
+            )
+            .scaleEffect(isHoveringOpenArchiveButton ? 1.01 : 1.0)
+            .shadow(color: Color.accentColor.opacity(isHoveringOpenArchiveButton ? 0.24 : 0.18), radius: isHoveringOpenArchiveButton ? 10 : 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .onHover { isHoveringOpenArchiveButton = $0 }
+    }
+
+    private func trySampleButton(metrics: EmptyStateMetrics) -> some View {
+        Button {
+            openArchive()
+        } label: {
+            Text(ui(.archiveEmptyTrySampleArchive))
+                .font(.system(size: metrics.actionButtonFontSize, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.9)
+                .foregroundStyle(.primary)
+                .frame(minWidth: metrics.sampleButtonMinWidth, minHeight: metrics.actionButtonHeight)
+                .frame(maxWidth: metrics.useVerticalActionButtons ? .infinity : nil)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(isDarkMode ? Color.white.opacity(isHoveringSampleArchiveButton ? 0.14 : 0.10) : Color.white.opacity(isHoveringSampleArchiveButton ? 0.82 : 0.72))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(isDarkMode ? Color.white.opacity(isHoveringSampleArchiveButton ? 0.12 : 0.08) : Color.black.opacity(isHoveringSampleArchiveButton ? 0.09 : 0.06), lineWidth: 1)
+                )
+                .scaleEffect(isHoveringSampleArchiveButton ? 1.01 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .onHover { isHoveringSampleArchiveButton = $0 }
+    }
+
+    private func primaryPanelBackground(metrics: EmptyStateMetrics) -> some View {
+        // 修改点 7：卡片从“灰板/玻璃泡泡”改成更接近 macOS 面板的实体浅卡。
+        RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous)
+            .fill(emptyPrimaryCardFill)
+            .overlay {
+                RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous)
+                    .stroke(emptyHairlineStroke, lineWidth: 1)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous)
+                    .stroke(emptyBorderStroke, lineWidth: 1)
+            }
+    }
+
+    private func featurePanelBackground(metrics: EmptyStateMetrics) -> some View {
+        RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous)
+            .fill(emptyFeatureCardFill)
+            .overlay {
+                RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous)
+                    .stroke(isDarkMode ? Color.white.opacity(0.08) : Color.white.opacity(0.28), lineWidth: 1)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous)
+                    .stroke(isDarkMode ? Color.black.opacity(0.28) : Color.black.opacity(0.055), lineWidth: 1)
+            }
     }
 
     private var compactLoadedSummaryBar: some View {
@@ -672,7 +931,7 @@ struct ContentView: View {
                 Button {
                     store.presentPaywall(feature: .fullLargeArchiveIndex)
                 } label: {
-                    chromeActionLabel(title: ui(.toolbarUpgradeShort), systemImage: nil, variant: .secondary)
+                    chromeActionLabel(title: ui(.archiveActionUnlockFullIndex), systemImage: "sparkles", variant: .upgrade)
                 }
                 .buttonStyle(.plain)
                 .controlSize(.small)
@@ -1143,7 +1402,7 @@ struct ContentView: View {
 
                             if let finding {
                                 if finding.riskLevel == .notice {
-                                    badgeLabel(L10n.string(.archiveHiddenBadge))
+                                    badgeLabel(L10n.string(.archiveHiddenBadge), semantic: "hidden")
                                 } else {
                                     riskBadge(for: finding)
                                 }
@@ -1189,7 +1448,7 @@ struct ContentView: View {
                         .frame(width: 140, alignment: .leading)
                 }
 
-                badgeLabel(fileTypeBadgeLabel(for: entry))
+                badgeLabel(fileTypeBadgeLabel(for: entry), semantic: fileTypeBadgeSemantic(for: entry))
                     .frame(width: 80, alignment: .leading)
             }
             .padding(.horizontal, 14)
@@ -1245,12 +1504,12 @@ struct ContentView: View {
                                         if riskFinding.riskLevel == .high || riskFinding.riskLevel == .medium {
                                             riskBadge(for: riskFinding)
                                         } else {
-                                            badgeLabel(L10n.string(.archiveHiddenBadge))
+                                            badgeLabel(L10n.string(.archiveHiddenBadge), semantic: "hidden")
                                         }
                                     }
                                 }
 
-                                badgeLabel(fileTypeBadgeLabel(for: selectedEntry))
+                                badgeLabel(fileTypeBadgeLabel(for: selectedEntry), semantic: fileTypeBadgeSemantic(for: selectedEntry))
                             }
 
                             Spacer()
@@ -1432,32 +1691,6 @@ struct ContentView: View {
         }
     }
 
-    private var dropZone: some View {
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(.thinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 1.2, dash: [6, 6]))
-                    .foregroundStyle(.secondary.opacity(0.35))
-            )
-            .frame(height: emptyStateMetrics.dropZoneHeight)
-            .frame(maxWidth: .infinity)
-            .overlay(
-                VStack(spacing: 10) {
-                    Image(systemName: "tray.and.arrow.down")
-                        .font(.system(size: emptyStateMetrics.isCompactHeight ? 20 : 24, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
-
-                    Text(ui(.archiveDropTitle))
-                        .font(.system(size: emptyStateMetrics.isCompactHeight ? 15 : 17, weight: .semibold))
-
-                    Text(ui(.archiveDropSubtitle))
-                        .font(.system(size: emptyStateMetrics.isCompactHeight ? 12 : 13))
-                        .foregroundStyle(.secondary)
-                }
-            )
-    }
-
     private var dropOverlay: some View {
         ZStack {
             Color.accentColor.opacity(0.12)
@@ -1611,7 +1844,7 @@ struct ContentView: View {
         let count = store.filterCount(for: filter)
         let isLocked = filter.requiresPro && !store.isPro
         let rowOpacity: Double = count == 0 ? (isSelected ? 0.78 : 0.52) : 1.0
-        let displayCountText = isLocked ? ui(.archiveProTag) : "\(count)"
+        let displayCountText = (isLocked && filter == .riskyFiles) ? "\(count)" : (isLocked ? ui(.archiveProTag) : "\(count)")
 
         return Button {
             if isLocked {
@@ -1661,9 +1894,7 @@ struct ContentView: View {
                             }
 
                         if isLocked {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.secondary)
+                            upgradePillLabel(compact: true)
                         }
                     }
                 }
@@ -1952,7 +2183,7 @@ struct ContentView: View {
             Divider()
 
             menuSectionTitle(ui(.menuSectionProTools))
-            menuAction(ui(.archiveMenuSearchMultipleArchives), systemImage: "magnifyingglass.circle", isEnabled: true, trailingTag: store.isPro ? nil : ui(.archiveProTag)) {
+            menuAction(ui(.archiveMenuSearchMultipleArchives), systemImage: "magnifyingglass.circle", isEnabled: true, trailingTag: store.isPro ? nil : ui(.paywallUnlockPro), trailingTagProminent: !store.isPro) {
                 if store.isPro {
                     openArchive()
                 } else {
@@ -1982,10 +2213,16 @@ struct ContentView: View {
                     store.customTypeRequest = CustomTypeRequest()
                 }
             } label: {
-                Label(L10n.string(.archiveBatchExtractByType), systemImage: "square.stack.3d.down.right")
+                HStack(spacing: 8) {
+                    Label(L10n.string(.archiveBatchExtractByType), systemImage: "square.stack.3d.down.right")
+                    Spacer(minLength: 0)
+                    if !store.isPro {
+                        upgradePillLabel(compact: true)
+                    }
+                }
             }
 
-            menuAction(ui(.archiveMenuScanRiskyFiles), systemImage: "exclamationmark.shield", isEnabled: true) {
+            menuAction(ui(.archiveMenuScanRiskyFiles), systemImage: "exclamationmark.shield", isEnabled: true, trailingTag: store.isPro ? nil : ui(.paywallUnlockPro), trailingTagProminent: !store.isPro) {
                 store.scanRiskyFiles()
             }
         }
@@ -2009,7 +2246,7 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func menuAction(_ title: String, systemImage: String, isEnabled: Bool, trailingTag: String? = nil, action: @escaping () -> Void) -> some View {
+    private func menuAction(_ title: String, systemImage: String, isEnabled: Bool, trailingTag: String? = nil, trailingTagProminent: Bool = false, action: @escaping () -> Void) -> some View {
         Button {
             action()
         } label: {
@@ -2017,12 +2254,16 @@ struct ContentView: View {
                 Label(title, systemImage: systemImage)
                 Spacer(minLength: 0)
                 if let trailingTag {
-                    Text(trailingTag)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.secondary.opacity(0.10), in: Capsule())
+                    if trailingTagProminent {
+                        upgradePillLabel(compact: true)
+                    } else {
+                        Text(trailingTag)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.10), in: Capsule())
+                    }
                 }
             }
         }
@@ -2093,34 +2334,34 @@ struct ContentView: View {
 
         switch finding.reason {
         case .macOSAppBundle, .macOSAppExecutablePath:
-            label = "APP"
+            label = ui(.badgeApp)
             color = .orange
         case .macOSInstaller:
-            label = "INSTALLER"
+            label = ui(.badgeInstaller)
             color = .orange
         case .macOSDiskImage:
-            label = "DISK IMAGE"
+            label = ui(.badgeDiskImage)
             color = .orange
         case .shellScript, .scriptFile:
-            label = "SCRIPT"
+            label = ui(.badgeScript)
             color = .orange
         case .windowsExecutable, .windowsScript:
-            label = "WINDOWS"
+            label = ui(.badgeWindows)
             color = .orange
         case .powershellScript:
-            label = "POWERSHELL"
+            label = ui(.badgePowerShell)
             color = .orange
         case .javaArchive:
-            label = "JAVA"
+            label = ui(.badgeJava)
             color = .orange
         case .suspiciousExecutableName:
-            label = "RISKY"
+            label = ui(.badgeRisky)
             color = .orange
         case .hiddenOrJunk:
-            label = "HIDDEN"
+            label = ui(.archiveHiddenBadge)
             color = .secondary
         case .sensitiveConfig:
-            label = "CONFIG"
+            label = ui(.badgeConfig)
             color = .secondary
         }
 
@@ -2137,8 +2378,9 @@ struct ContentView: View {
         return Color.clear
     }
 
-    private func badgeLabel(_ text: String) -> some View {
-        TagBadgeView(text: text, tint: badgeTint(for: text), backgroundTint: badgeBackgroundTint(for: text))
+    private func badgeLabel(_ text: String, semantic: String? = nil) -> some View {
+        let token = semantic ?? text
+        return TagBadgeView(text: text, tint: badgeTint(for: token), backgroundTint: badgeBackgroundTint(for: token))
     }
 
     private func badgeTint(for text: String) -> Color {
@@ -2225,61 +2467,123 @@ struct ContentView: View {
         fileTypeBadgeLabel(for: entry.originalArchiveItem)
     }
 
-    private func fileTypeBadgeLabel(for entry: ArchiveEntry) -> String {
+    private func fileTypeBadgeSemantic(for entry: DisplayArchiveItem) -> String {
+        fileTypeBadgeSemantic(for: entry.originalArchiveItem)
+    }
+
+    private func fileTypeBadgeSemantic(for entry: ArchiveEntry) -> String {
         if let finding = store.riskFinding(for: entry) {
             switch finding.reason {
             case .macOSAppBundle, .macOSAppExecutablePath:
-                return "APP"
+                return "app"
             case .macOSInstaller:
-                return "INSTALLER"
+                return "installer"
             case .macOSDiskImage:
-                return "DISK IMAGE"
+                return "disk image"
             case .shellScript, .scriptFile:
-                return "SCRIPT"
+                return "script"
             case .windowsExecutable, .windowsScript:
-                return "WINDOWS"
+                return "windows"
             case .powershellScript:
-                return "POWERSHELL"
+                return "powershell"
             case .javaArchive:
-                return "JAVA"
+                return "java"
             case .suspiciousExecutableName:
-                return "RISKY"
+                return "risky"
             case .hiddenOrJunk:
-                return "HIDDEN"
+                return "hidden"
             case .sensitiveConfig:
-                return "CONFIG"
+                return "config"
             }
         }
 
         switch entry.kind {
         case .folder:
-            return "FOLDER"
+            return "folder"
         case .image:
-            return "IMAGE"
+            return "image"
         case .document:
-            return entry.fileExtensionLowercased == "pdf" ? "PDF" : "DOCUMENT"
+            return entry.fileExtensionLowercased == "pdf" ? "pdf" : "document"
         case .code:
-            return "CODE"
+            return "code"
         case .video:
-            return "VIDEO"
+            return "video"
         case .archive:
-            return "ARCHIVE"
+            return "archive"
         case .text:
-            return "TEXT"
+            return "text"
         case .largeFile:
-            return "LARGE"
+            return "large"
         case .other:
-            return "FILE"
+            return "file"
         case .executable:
             let ext = entry.fileExtensionLowercased
-            if ext == "app" { return "APP" }
-            if ext == "pkg" { return "INSTALLER" }
-            if ext == "dmg" { return "DISK IMAGE" }
-            if ["command", "sh", "bash", "zsh"].contains(ext) { return "SCRIPT" }
-            if ["exe", "scr", "bat", "cmd", "vbs"].contains(ext) { return "WINDOWS" }
-            if ext == "ps1" { return "POWERSHELL" }
-            if ext == "jar" { return "JAVA" }
-            return "EXEC"
+            if ext == "app" { return "app" }
+            if ext == "pkg" { return "installer" }
+            if ext == "dmg" { return "disk image" }
+            if ["command", "sh", "bash", "zsh"].contains(ext) { return "script" }
+            if ["exe", "scr", "bat", "cmd", "vbs"].contains(ext) { return "windows" }
+            if ext == "ps1" { return "powershell" }
+            if ext == "jar" { return "java" }
+            return "exec"
+        }
+    }
+
+    private func fileTypeBadgeLabel(for entry: ArchiveEntry) -> String {
+        if let finding = store.riskFinding(for: entry) {
+            switch finding.reason {
+            case .macOSAppBundle, .macOSAppExecutablePath:
+                return ui(.badgeApp)
+            case .macOSInstaller:
+                return ui(.badgeInstaller)
+            case .macOSDiskImage:
+                return ui(.badgeDiskImage)
+            case .shellScript, .scriptFile:
+                return ui(.badgeScript)
+            case .windowsExecutable, .windowsScript:
+                return ui(.badgeWindows)
+            case .powershellScript:
+                return ui(.badgePowerShell)
+            case .javaArchive:
+                return ui(.badgeJava)
+            case .suspiciousExecutableName:
+                return ui(.badgeRisky)
+            case .hiddenOrJunk:
+                return ui(.archiveHiddenBadge)
+            case .sensitiveConfig:
+                return ui(.badgeConfig)
+            }
+        }
+
+        switch entry.kind {
+        case .folder:
+            return ui(.badgeFolder)
+        case .image:
+            return ui(.badgeImage)
+        case .document:
+            return entry.fileExtensionLowercased == "pdf" ? ui(.badgePDF) : ui(.badgeDocument)
+        case .code:
+            return ui(.badgeCode)
+        case .video:
+            return ui(.badgeVideo)
+        case .archive:
+            return ui(.badgeArchive)
+        case .text:
+            return ui(.badgeText)
+        case .largeFile:
+            return ui(.badgeLarge)
+        case .other:
+            return ui(.badgeFile)
+        case .executable:
+            let ext = entry.fileExtensionLowercased
+            if ext == "app" { return ui(.badgeApp) }
+            if ext == "pkg" { return ui(.badgeInstaller) }
+            if ext == "dmg" { return ui(.badgeDiskImage) }
+            if ["command", "sh", "bash", "zsh"].contains(ext) { return ui(.badgeScript) }
+            if ["exe", "scr", "bat", "cmd", "vbs"].contains(ext) { return ui(.badgeWindows) }
+            if ext == "ps1" { return ui(.badgePowerShell) }
+            if ext == "jar" { return ui(.badgeJava) }
+            return ui(.badgeExec)
         }
     }
 
@@ -2329,15 +2633,11 @@ struct ContentView: View {
         }
     }
 
-    private func debugEmptyStateMetrics() {
-        let metrics = emptyStateMetrics
-        print("[EmptyStateMetrics] width=\(Int(metrics.width)), height=\(Int(metrics.height)), contentWidth=\(Int(metrics.contentWidth)), icon=\(Int(metrics.iconSize)), dropZoneHeight=\(Int(metrics.dropZoneHeight))")
-    }
-
     private enum ChromeActionVariant: Equatable {
         case primary
         case secondary
         case subtle
+        case upgrade
     }
 
     private func chromeActionLabel(title: String, systemImage: String?, variant: ChromeActionVariant) -> some View {
@@ -2371,6 +2671,21 @@ struct ContentView: View {
                 fontSize: 12.6,
                 shadowOpacity: 0.0
             )
+        } else if variant == .upgrade {
+            chromeActionBody(
+                title: title,
+                systemImage: systemImage,
+                foreground: Color.accentColor,
+                background: Color.accentColor.opacity(0.10),
+                horizontalPadding: 12,
+                minWidth: 92,
+                maxWidth: 140,
+                minHeight: 30,
+                cornerRadius: 10,
+                fontWeight: .semibold,
+                fontSize: 12.4,
+                shadowOpacity: 0.0
+            )
         } else {
             chromeActionBody(
                 title: title,
@@ -2387,6 +2702,22 @@ struct ContentView: View {
                 shadowOpacity: 0.0
             )
         }
+    }
+
+    private func upgradePillLabel(compact: Bool = false) -> some View {
+        Text(ui(.paywallUnlockPro))
+            .font(.system(size: compact ? 10.5 : 11.5, weight: .semibold))
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, compact ? 7 : 8)
+            .padding(.vertical, compact ? 3 : 4)
+            .background(
+                Capsule()
+                    .fill(Color.accentColor.opacity(0.10))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.accentColor.opacity(0.16), lineWidth: 1)
+            )
     }
 
     private func chromeActionBody(
@@ -2605,119 +2936,516 @@ private struct LayoutMetrics {
     }
 }
 
-private struct EmptyStateMetrics {
-    let width: CGFloat
-    let height: CGFloat
+private enum EmptyStateTier {
+    case compact
+    case regular
+    case expanded
+}
 
-    var isCompactHeight: Bool { height < 760 }
-    var isVeryCompactHeight: Bool { height < 660 }
-    var isNarrow: Bool { width < 760 }
+private struct EmptyStateMetrics {
+    let size: CGSize
+
+    var tier: EmptyStateTier {
+        if size.width >= 1180 && size.height >= 760 {
+            return .expanded
+        }
+
+        if size.width >= 900 && size.height >= 660 {
+            return .regular
+        }
+
+        return .compact
+    }
 
     var horizontalPadding: CGFloat {
-        isNarrow ? 20 : 32
+        switch tier {
+        case .compact: return 24
+        case .regular: return 40
+        case .expanded: return 64
+        }
     }
 
     var availableWidth: CGFloat {
-        max(0, width - horizontalPadding * 2)
+        max(0, size.width - horizontalPadding * 2)
     }
 
-    var minContentWidth: CGFloat { 520 }
-    var idealContentWidth: CGFloat { 720 }
-    var maxContentWidth: CGFloat { 760 }
-
-    var minContentWidthResolved: CGFloat {
-        min(minContentWidth, availableWidth)
+    var availableHeight: CGFloat {
+        max(0, size.height - 80)
     }
 
-    var idealContentWidthResolved: CGFloat {
-        min(idealContentWidth, availableWidth)
+    var isExpanded: Bool {
+        tier == .expanded
     }
 
-    var maxContentWidthResolved: CGFloat {
-        min(maxContentWidth, max(minContentWidthResolved, idealContentWidthResolved))
+    var useTwoColumns: Bool {
+        tier == .regular || tier == .expanded
+    }
+
+    var shouldScaleContent: Bool {
+        tier == .compact
+    }
+
+    var primaryPanelWidth: CGFloat {
+        switch tier {
+        case .compact:
+            return contentWidth
+        case .regular:
+            return contentWidth * 0.63
+        case .expanded:
+            return min(contentWidth * 0.64, 800)
+        }
     }
 
     var contentWidth: CGFloat {
-        if availableWidth < minContentWidth {
-            return availableWidth
+        switch tier {
+        case .compact:
+            return min(max(availableWidth, 560), 760)
+        case .regular:
+            return min(max(availableWidth * 0.92, 900), 1080)
+        case .expanded:
+            return min(max(availableWidth * 0.92, 1180), 1320)
         }
-        return max(minContentWidth, min(idealContentWidth, min(maxContentWidth, availableWidth)))
     }
 
-    var shouldUseNarrowLayout: Bool {
-        availableWidth < minContentWidth
+    var contentScale: CGFloat {
+        let widthScale = min(1.0, availableWidth / contentWidth)
+        let heightScale: CGFloat
+
+        if useTwoColumns {
+            heightScale = min(1.0, availableHeight / 560)
+        } else {
+            heightScale = min(1.0, availableHeight / 680)
+        }
+
+        return max(0.82, min(widthScale, heightScale))
     }
 
-    var verticalSpacing: CGFloat {
-        if isCompactHeight { return 14 }
-        return 18
+    var heroIconSize: CGFloat {
+        switch tier {
+        case .compact: return 60
+        case .regular: return 76
+        case .expanded: return 82
+        }
     }
 
-    var sectionSpacing: CGFloat {
-        verticalSpacing
+    var headerIconSize: CGFloat {
+        heroIconSize
     }
 
-    var verticalPadding: CGFloat {
-        if isCompactHeight { return 24 }
-        return 36
+    var titleSize: CGFloat {
+        switch tier {
+        case .compact: return 28
+        case .regular: return 36
+        case .expanded: return 40
+        }
     }
 
-    var iconSize: CGFloat {
-        if isCompactHeight { return 56 }
-        return 60
-    }
-
-    var titleFontSize: CGFloat {
-        if isCompactHeight { return 24 }
-        return 26
-    }
-
-    var subtitleFontSize: CGFloat {
-        return 14
-    }
-
-    var subtitleMaxWidth: CGFloat {
-        return 620
+    var subtitleSize: CGFloat {
+        switch tier {
+        case .compact: return 14
+        case .regular: return 16
+        case .expanded: return 17
+        }
     }
 
     var headerSpacing: CGFloat {
-        return 16
+        switch tier {
+        case .compact: return 18
+        case .regular: return 20
+        case .expanded: return 24
+        }
     }
 
-    var primaryCardSpacing: CGFloat {
-        if isCompactHeight { return 12 }
-        return 14
+    var columnSpacing: CGFloat {
+        switch tier {
+        case .compact: return 16
+        case .regular: return 24
+        case .expanded: return 28
+        }
     }
 
-    var primaryCardPadding: CGFloat {
-        if isCompactHeight { return 18 }
-        return 20
+    var cardPadding: CGFloat {
+        switch tier {
+        case .compact: return 22
+        case .regular: return 28
+        case .expanded: return 28
+        }
     }
 
-    var primaryTitleFontSize: CGFloat {
-        return 18
+    var verticalPadding: CGFloat {
+        switch tier {
+        case .compact: return 26
+        case .regular: return 34
+        case .expanded: return 32
+        }
     }
 
-    var primarySubtitleFontSize: CGFloat {
-        return 14
+    var contentYOffset: CGFloat {
+        switch tier {
+        case .compact: return -8
+        case .regular: return -8
+        case .expanded: return 2
+        }
     }
 
-    var pillFontSize: CGFloat {
-        return 12
+    var heroLeadingInset: CGFloat {
+        switch tier {
+        case .compact: return 0
+        case .regular: return 18
+        case .expanded: return 0
+        }
     }
 
-    var pillHorizontalPadding: CGFloat {
-        return 12
+    var heroFrameWidth: CGFloat {
+        switch tier {
+        case .compact:
+            return contentWidth
+        case .regular:
+            return contentWidth
+        case .expanded:
+            return min(primaryPanelWidth - 132, 620)
+        }
     }
 
-    var pillVerticalPadding: CGFloat {
-        return 7
+    var primaryPanelMinHeight: CGFloat {
+        switch tier {
+        case .compact, .regular:
+            return 0
+        case .expanded:
+            return 452
+        }
+    }
+
+    var panelHeight: CGFloat? {
+        switch tier {
+        case .compact, .regular:
+            return nil
+        case .expanded:
+            return 428
+        }
+    }
+
+    var featurePanelTopInset: CGFloat {
+        switch tier {
+        case .compact, .regular:
+            return 0
+        case .expanded:
+            return 74
+        }
+    }
+
+    var cardCornerRadius: CGFloat {
+        switch tier {
+        case .compact: return 22
+        case .regular: return 26
+        case .expanded: return 26
+        }
+    }
+
+    var featurePanelWidth: CGFloat {
+        switch tier {
+        case .compact:
+            return contentWidth
+        case .regular, .expanded:
+            return contentWidth - primaryPanelWidth - columnSpacing
+        }
     }
 
     var dropZoneHeight: CGFloat {
-        if isCompactHeight { return 96 }
-        return 108
+        switch tier {
+        case .compact: return 108
+        case .regular: return 124
+        case .expanded: return 144
+        }
     }
+
+    var dropZoneCornerRadius: CGFloat {
+        switch tier {
+        case .compact: return 18
+        case .regular: return 20
+        case .expanded: return 20
+        }
+    }
+
+    var dropZoneIconSize: CGFloat {
+        switch tier {
+        case .compact: return 26
+        case .regular: return 30
+        case .expanded: return 38
+        }
+    }
+
+    var dropZoneBadgeSize: CGFloat {
+        switch tier {
+        case .compact: return 40
+        case .regular: return 44
+        case .expanded: return 44
+        }
+    }
+
+    var dropZoneGlyphSize: CGFloat {
+        switch tier {
+        case .compact: return 20
+        case .regular: return 22
+        case .expanded: return 22
+        }
+    }
+
+    var dropZoneTitleSize: CGFloat {
+        switch tier {
+        case .compact: return 14
+        case .regular: return 16
+        case .expanded: return 16
+        }
+    }
+
+    var dropZoneSubtitleSize: CGFloat {
+        switch tier {
+        case .compact: return 12
+        case .regular: return 13
+        case .expanded: return 13
+        }
+    }
+
+    var actionButtonHeight: CGFloat {
+        switch tier {
+        case .compact:
+            return contentScale < 0.9 ? 36 : 40
+        case .regular:
+            return 46
+        case .expanded:
+            return 46
+        }
+    }
+
+    var actionButtonFontSize: CGFloat {
+        switch tier {
+        case .compact:
+            return contentScale < 0.9 ? 13 : 13.5
+        case .regular:
+            return 14.5
+        case .expanded:
+            return 14.5
+        }
+    }
+
+    var useVerticalActionButtons: Bool {
+        tier == .compact && (availableWidth < 700 || contentScale < 0.9)
+    }
+
+    var primaryPanelSpacing: CGFloat {
+        switch tier {
+        case .compact: return 16
+        case .regular: return 20
+        case .expanded: return 18
+        }
+    }
+
+    var primaryTitleSize: CGFloat {
+        switch tier {
+        case .compact: return 20
+        case .regular: return 24
+        case .expanded: return 30
+        }
+    }
+
+    var primarySubtitleSize: CGFloat {
+        subtitleSize
+    }
+
+    var featurePanelSpacing: CGFloat {
+        switch tier {
+        case .compact: return 14
+        case .regular: return 16
+        case .expanded: return 16
+        }
+    }
+
+    var featuresTitleSize: CGFloat {
+        switch tier {
+        case .compact: return 15
+        case .regular: return 16
+        case .expanded: return 17
+        }
+    }
+
+    var featureRowSpacing: CGFloat {
+        switch tier {
+        case .compact: return 10
+        case .regular: return 12
+        case .expanded: return 12
+        }
+    }
+
+    var featureIconTileSize: CGFloat {
+        switch tier {
+        case .compact: return 32
+        case .regular: return 34
+        case .expanded: return 40
+        }
+    }
+
+    var featureIconCornerRadius: CGFloat {
+        switch tier {
+        case .compact: return 10
+        case .regular: return 10
+        case .expanded: return 10
+        }
+    }
+
+    var featureIconSize: CGFloat {
+        switch tier {
+        case .compact: return 14
+        case .regular: return 15
+        case .expanded: return 16
+        }
+    }
+
+    var featureRowTitleSize: CGFloat {
+        switch tier {
+        case .compact: return 13.5
+        case .regular: return 14.5
+        case .expanded: return 16
+        }
+    }
+
+    var featureRowSubtitleSize: CGFloat {
+        switch tier {
+        case .compact: return 12.5
+        case .regular: return 12.5
+        case .expanded: return 13.5
+        }
+    }
+
+    var featureRowCornerRadius: CGFloat {
+        switch tier {
+        case .compact: return 14
+        case .regular: return 15
+        case .expanded: return 15
+        }
+    }
+
+    var formatsTitleSize: CGFloat {
+        switch tier {
+        case .compact: return 12.5
+        case .regular: return 12.5
+        case .expanded: return 12.5
+        }
+    }
+
+    var formatPillHeight: CGFloat {
+        switch tier {
+        case .compact: return 24
+        case .regular: return 28
+        case .expanded: return 28
+        }
+    }
+
+    var formatPillMinWidth: CGFloat {
+        switch tier {
+        case .compact: return 48
+        case .regular: return 54
+        case .expanded: return 54
+        }
+    }
+
+    var formatPillFontSize: CGFloat {
+        switch tier {
+        case .compact: return 11.5
+        case .regular: return 12
+        case .expanded: return 12
+        }
+    }
+
+    var formatGridSpacing: CGFloat {
+        switch tier {
+        case .compact: return 6
+        case .regular: return 7
+        case .expanded: return 8
+        }
+    }
+
+    var openButtonMinWidth: CGFloat {
+        switch tier {
+        case .compact: return 132
+        case .regular: return 150
+        case .expanded: return 160
+        }
+    }
+
+    var sampleButtonMinWidth: CGFloat {
+        switch tier {
+        case .compact: return 136
+        case .regular: return 160
+        case .expanded: return 168
+        }
+    }
+
+    var archiveBadgeFontSize: CGFloat {
+        switch tier {
+        case .compact: return 11
+        case .regular: return 11.5
+        case .expanded: return 12
+        }
+    }
+
+    var heroToBodySpacing: CGFloat {
+        switch tier {
+        case .compact: return 22
+        case .regular: return 28
+        case .expanded: return 14
+        }
+    }
+
+    var heroTextSpacing: CGFloat {
+        switch tier {
+        case .compact: return 5
+        case .regular: return 6
+        case .expanded: return 7
+        }
+    }
+
+    var heroTitleTracking: CGFloat {
+        switch tier {
+        case .compact: return -0.2
+        case .regular: return -0.35
+        case .expanded: return -0.35
+        }
+    }
+
+    var heroSubtitleWidth: CGFloat {
+        switch tier {
+        case .compact: return 420
+        case .regular: return 520
+        case .expanded: return 640
+        }
+    }
+
+    var heroValueSize: CGFloat {
+        switch tier {
+        case .compact: return 12
+        case .regular: return 12.5
+        case .expanded: return 13
+        }
+    }
+
+    var heroVerticalPadding: CGFloat {
+        switch tier {
+        case .compact: return 4
+        case .regular: return 8
+        case .expanded: return 2
+        }
+    }
+
+    var featurePanelFlexibleGap: CGFloat {
+        switch tier {
+        case .compact, .regular:
+            return 0
+        case .expanded:
+            return 14
+        }
+    }
+
 }
 
 private enum TableColumnMode {

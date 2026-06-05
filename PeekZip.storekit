@@ -1,0 +1,45 @@
+{
+  "identifier" : "8D0C3F1E-8A87-4C98-AE3C-5C7C1D9F3E10",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "4D2A3B55-0F47-46A8-9AE6-4AE9A4F5B001",
+      "localizations" : [
+        {
+          "description" : "Unlock PeekZip Pro with lifetime access to full indexing, password-protected archive support, batch extract, and risky file detection.",
+          "displayName" : "PeekZip Pro",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "解锁 PeekZip Pro，获得完整索引、密码压缩包支持、按类型批量提取和风险文件检测。",
+          "displayName" : "PeekZip Pro",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.youyujie.peekzip.pro",
+      "referenceName" : "PeekZip Pro",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "B0E977D0-746B-45B8-8A0C-C6D8E6D1F9A1",
+    "_developerTeamID" : "",
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 770000000,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_timeRate" : 1
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

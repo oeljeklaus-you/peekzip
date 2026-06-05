@@ -4,27 +4,17 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>PeekZip</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>PeekZip</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>CFBundleIconName</key>
-	<string>AppIcon</string>
-	<key>LSMinimumSystemVersion</key>
-	<string>13.0</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>zip</string>
+			</array>
+			<key>CFBundleTypeMIMETypes</key>
+			<array>
+				<string>application/zip</string>
+			</array>
 			<key>CFBundleTypeName</key>
 			<string>ZIP Archive</string>
 			<key>CFBundleTypeRole</key>
@@ -35,26 +25,8 @@
 			<array>
 				<string>public.zip-archive</string>
 			</array>
-			<key>CFBundleTypeExtensions</key>
-			<array>
-				<string>zip</string>
-			</array>
-			<key>CFBundleTypeMIMETypes</key>
-			<array>
-				<string>application/zip</string>
-			</array>
 		</dict>
 		<dict>
-			<key>CFBundleTypeName</key>
-			<string>Archive</string>
-			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
-			<key>LSHandlerRank</key>
-			<string>Alternate</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>public.archive</string>
-			</array>
 			<key>CFBundleTypeExtensions</key>
 			<array>
 				<string>tar</string>
@@ -80,8 +52,38 @@
 				<string>application/x-rar-compressed</string>
 				<string>application/x-7z-compressed</string>
 			</array>
+			<key>CFBundleTypeName</key>
+			<string>Archive</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.archive</string>
+			</array>
 		</dict>
 	</array>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>PeekZip</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
 	<key>NSMainNibFile</key>
 	<string></string>
 	<key>NSPrincipalClass</key>

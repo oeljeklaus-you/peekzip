@@ -23,12 +23,19 @@ enum L10n {
         case paywallLifetimePro
         case paywallLaunchPrice
         case paywallOneTimePurchase
+        case paywallPriceLoading
         case paywallUnlockPro
         case paywallRestorePurchase
         case paywallContinueFree
         case paywallUnlocking
         case paywallRestoring
         case paywallClose
+        case paywallPurchaseSucceeded
+        case paywallPurchasePending
+        case paywallRestoreSucceeded
+        case paywallRestoreNothingFound
+        case paywallPurchaseUnavailable
+        case paywallPurchaseFailed
         case archiveFewItemsHint
         case toolbarOpenShort
         case toolbarExtractShort
@@ -104,6 +111,18 @@ enum L10n {
         case archiveMetadataPathInArchive
         case archiveMetadataArchiveName
         case archiveMetadataParentFolder
+        case archiveCompressionDeflate
+        case archiveCompressionStored
+        case archiveKindFolder
+        case archiveKindImage
+        case archiveKindDocument
+        case archiveKindCode
+        case archiveKindVideo
+        case archiveKindLargeFile
+        case archiveKindArchive
+        case archiveKindText
+        case archiveKindFile
+        case archiveKindExecutable
         case archiveMetadataLevel
         case archiveMetadataReason
         case archiveMetadataMessage
@@ -193,6 +212,14 @@ enum L10n {
         case emptyHomeSubtitle
         case emptyPrimaryTitle
         case emptyPrimarySubtitle
+        case emptyFeaturesTitle
+        case emptyFeatureSearchTitle
+        case emptyFeatureSearchSubtitle
+        case emptyFeatureBrowseTitle
+        case emptyFeatureBrowseSubtitle
+        case emptyFeatureExtractTitle
+        case emptyFeatureExtractSubtitle
+        case emptyFormatsTitle
         case emptySectionRecent
         case emptySectionSamples
         case emptySectionFormats
@@ -227,7 +254,6 @@ enum L10n {
         case archiveToastPathCopied
         case archiveArchivesOpen
         case archiveShowingSuffix
-        case archiveRestorePurchaseFuture
         case toolbarActionsShort
         case toolbarProShort
         case toolbarProActiveShort
@@ -240,6 +266,26 @@ enum L10n {
         case archiveChooseDestinationFolderMessage
         case archiveExtractArchivePrompt
         case archiveExtractSelectedItemPrompt
+        case badgeFolder
+        case badgeImage
+        case badgeDocument
+        case badgePDF
+        case badgeCode
+        case badgeVideo
+        case badgeArchive
+        case badgeText
+        case badgeLarge
+        case badgeFile
+        case badgeApp
+        case badgeInstaller
+        case badgeDiskImage
+        case badgeScript
+        case badgeWindows
+        case badgePowerShell
+        case badgeJava
+        case badgeExec
+        case badgeRisky
+        case badgeConfig
         case passwordPromptTitle
         case passwordPromptMessage
         case passwordPromptRememberSession
@@ -251,6 +297,8 @@ enum L10n {
         case batchExtractCustomCancel
         case batchExtractCustomExtract
         case settingsGeneralTitle
+        case settingsLanguageTitle
+        case settingsLanguageFollowSystem
         case settingsRevealAfterExtract
         case settingsKeepFolderStructure
         case settingsSkipJunkFilesOnExtract
@@ -261,15 +309,39 @@ enum L10n {
         case settingsLicenseStatus
         case settingsFree
         case settingsProActive
-        case settingsUnlockPro
-        case settingsResetProForTesting
         case settingsDefaultExtractLocationPanelTitle
         case settingsDefaultExtractLocationPanelMessage
     }
 
     static var languageCode: String {
-        let preferred = Locale.preferredLanguages.first ?? Locale.current.identifier
-        let normalized = preferred.replacingOccurrences(of: "_", with: "-")
+        let preferred = UserDefaults.standard.string(forKey: "PeekZip.pref.languageCode")
+            ?? Locale.preferredLanguages.first
+            ?? Locale.current.identifier
+        let resolved = resolvedLanguageCode(for: preferred)
+        return supportedLocaleCodes.contains(resolved) ? resolved : "en"
+    }
+
+    static func displayName(for localeCode: String) -> String {
+        switch localeCode {
+        case "zh-Hans":
+            return "简体中文"
+        case "zh-Hant":
+            return "繁體中文"
+        case "pt-BR":
+            return "Português (Brasil)"
+        case "pt-PT":
+            return "Português (Portugal)"
+        default:
+            let baseCode = localeCode.split(separator: "-").first.map(String.init) ?? localeCode
+            let locale = Locale(identifier: localeCode)
+            return locale.localizedString(forLanguageCode: baseCode)
+            ?? Locale.current.localizedString(forLanguageCode: baseCode)
+            ?? localeCode
+        }
+    }
+
+    private static func resolvedLanguageCode(for identifier: String) -> String {
+        let normalized = identifier.replacingOccurrences(of: "_", with: "-")
         let lower = normalized.lowercased()
 
         if lower.hasPrefix("zh") {
@@ -323,6 +395,743 @@ enum L10n {
         }
 
         return [
+            "ja": merged([
+                "toolbarOpenShort": "開く",
+                "toolbarExtractShort": "抽出",
+                "toolbarMoreAccessibility": "その他の操作",
+                "archiveContentsTitle": "アーカイブ内容",
+                "archiveContentsSubtitleDefault": "展開前にファイルを検索・絞り込み・抽出します。",
+                "searchPlaceholderArchive": "名前・拡張子・パスを検索…",
+                "archiveInspectGroupTitle": "確認",
+                "archiveSummaryGroupTitle": "概要",
+                "archiveContentsInspectorTitle": "インスペクタ",
+                "archiveContentsInspectorSubtitle": "メタデータを確認し、安全にプレビューして必要なものだけ抽出します。",
+                "archiveMetadataTitle": "メタデータ",
+                "archiveLocationTitle": "場所",
+                "archivePreviewTitle": "プレビュー",
+                "archiveMetadataType": "種類",
+                "archiveMetadataSize": "サイズ",
+                "archiveMetadataModified": "更新日",
+                "archiveMetadataCompression": "圧縮方式",
+                "archiveMetadataCompressedSize": "圧縮後サイズ",
+                "archiveMetadataPathInArchive": "アーカイブ内パス",
+                "archiveMetadataArchiveName": "アーカイブ名",
+                "archiveMetadataParentFolder": "親フォルダ",
+                "filterAllItems": "すべて",
+                "filterFolders": "フォルダ",
+                "filterImages": "画像",
+                "filterDocuments": "書類",
+                "filterCode": "コード",
+                "filterVideos": "動画",
+                "filterArchives": "アーカイブ",
+                "filterLargeFiles": "大容量ファイル",
+                "filterRecentlyViewed": "最近見た項目",
+                "filterRiskyFiles": "危険ファイル",
+                "filterHiddenJunkFiles": "隠し・不要",
+                "metricItems": "項目",
+                "metricCode": "コード",
+                "metricFolders": "フォルダ",
+                "metricDocuments": "書類",
+                "metricImages": "画像",
+                "metricVideos": "動画",
+                "metricLarge": "大容量",
+                "metricRisky": "危険",
+                "metricHidden": "隠し",
+                "archiveMetricTopLevelOverview": "トップレベル概要",
+                "archiveMetricMostRelevant": "最も関連性が高い",
+                "archiveNoArchiveSelected": "アーカイブ未選択",
+                "archiveHiddenBadge": "隠し",
+                "badgeFolder": "フォルダ",
+                "badgeImage": "画像",
+                "badgeDocument": "書類",
+                "badgePDF": "PDF",
+                "badgeCode": "コード",
+                "badgeVideo": "動画",
+                "badgeArchive": "圧縮",
+                "badgeText": "テキスト",
+                "badgeLarge": "大容量",
+                "badgeFile": "ファイル",
+                "badgeApp": "APP",
+                "badgeInstaller": "インストーラ",
+                "badgeDiskImage": "ディスクイメージ",
+                "badgeScript": "スクリプト",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "実行ファイル",
+                "badgeRisky": "危険",
+                "badgeConfig": "設定"
+            ]),
+            "ko": merged([
+                "toolbarOpenShort": "열기",
+                "toolbarExtractShort": "추출",
+                "toolbarMoreAccessibility": "추가 작업",
+                "archiveContentsTitle": "압축 파일 내용",
+                "archiveContentsSubtitleDefault": "압축 해제 전에 파일을 검색, 필터링하고 추출하세요.",
+                "searchPlaceholderArchive": "이름, 확장자 또는 경로 검색…",
+                "archiveInspectGroupTitle": "검사",
+                "archiveSummaryGroupTitle": "요약",
+                "archiveContentsInspectorTitle": "인스펙터",
+                "archiveContentsInspectorSubtitle": "메타데이터를 확인하고 안전하게 미리 보기한 뒤 필요한 항목만 추출하세요.",
+                "archiveMetadataTitle": "메타데이터",
+                "archiveLocationTitle": "위치",
+                "archivePreviewTitle": "미리보기",
+                "archiveMetadataType": "유형",
+                "archiveMetadataSize": "크기",
+                "archiveMetadataModified": "수정됨",
+                "archiveMetadataCompression": "압축 방식",
+                "archiveMetadataCompressedSize": "압축 크기",
+                "archiveMetadataPathInArchive": "압축 파일 내부 경로",
+                "archiveMetadataArchiveName": "압축 파일 이름",
+                "archiveMetadataParentFolder": "상위 폴더",
+                "filterAllItems": "전체 항목",
+                "filterFolders": "폴더",
+                "filterImages": "이미지",
+                "filterDocuments": "문서",
+                "filterCode": "코드",
+                "filterVideos": "동영상",
+                "filterArchives": "압축 파일",
+                "filterLargeFiles": "대용량 파일",
+                "filterRecentlyViewed": "최근 본 항목",
+                "filterRiskyFiles": "위험 파일",
+                "filterHiddenJunkFiles": "숨김 및 정크",
+                "metricItems": "항목",
+                "metricCode": "코드",
+                "metricFolders": "폴더",
+                "metricDocuments": "문서",
+                "metricImages": "이미지",
+                "metricVideos": "동영상",
+                "metricLarge": "대용량",
+                "metricRisky": "위험",
+                "metricHidden": "숨김",
+                "archiveMetricTopLevelOverview": "최상위 개요",
+                "archiveMetricMostRelevant": "가장 관련 높음",
+                "archiveNoArchiveSelected": "선택된 압축 파일 없음",
+                "archiveHiddenBadge": "숨김",
+                "badgeFolder": "폴더",
+                "badgeImage": "이미지",
+                "badgeDocument": "문서",
+                "badgePDF": "PDF",
+                "badgeCode": "코드",
+                "badgeVideo": "동영상",
+                "badgeArchive": "압축",
+                "badgeText": "텍스트",
+                "badgeLarge": "대용량",
+                "badgeFile": "파일",
+                "badgeApp": "앱",
+                "badgeInstaller": "설치 패키지",
+                "badgeDiskImage": "디스크 이미지",
+                "badgeScript": "스크립트",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "실행 파일",
+                "badgeRisky": "위험",
+                "badgeConfig": "설정"
+            ]),
+            "ar": merged([
+                "toolbarOpenShort": "فتح",
+                "toolbarExtractShort": "استخراج",
+                "toolbarMoreAccessibility": "إجراءات إضافية",
+                "archiveContentsTitle": "محتويات الأرشيف",
+                "archiveContentsSubtitleDefault": "ابحث عن الملفات وصفِّها واستخرجها قبل فك الضغط.",
+                "searchPlaceholderArchive": "ابحث بالاسم أو الامتداد أو المسار…",
+                "archiveInspectGroupTitle": "فحص",
+                "archiveSummaryGroupTitle": "الملخص",
+                "archiveContentsInspectorTitle": "المفتش",
+                "archiveContentsInspectorSubtitle": "افحص البيانات الوصفية واعرض بأمان واستخرج ما تحتاجه فقط.",
+                "archiveMetadataTitle": "البيانات الوصفية",
+                "archiveLocationTitle": "الموقع",
+                "archivePreviewTitle": "المعاينة",
+                "archiveMetadataType": "النوع",
+                "archiveMetadataSize": "الحجم",
+                "archiveMetadataModified": "التعديل",
+                "archiveMetadataCompression": "الضغط",
+                "archiveMetadataCompressedSize": "الحجم المضغوط",
+                "archiveMetadataPathInArchive": "المسار داخل الأرشيف",
+                "archiveMetadataArchiveName": "اسم الأرشيف",
+                "archiveMetadataParentFolder": "المجلد الأب",
+                "filterAllItems": "كل العناصر",
+                "filterFolders": "المجلدات",
+                "filterImages": "الصور",
+                "filterDocuments": "المستندات",
+                "filterCode": "الرمز",
+                "filterVideos": "الفيديوهات",
+                "filterArchives": "الأرشيفات",
+                "filterLargeFiles": "الملفات الكبيرة",
+                "filterRecentlyViewed": "شوهدت مؤخراً",
+                "filterRiskyFiles": "الملفات الخطرة",
+                "filterHiddenJunkFiles": "المخفية والمهملة",
+                "metricItems": "العناصر",
+                "metricCode": "الرمز",
+                "metricFolders": "المجلدات",
+                "metricDocuments": "المستندات",
+                "metricImages": "الصور",
+                "metricVideos": "الفيديوهات",
+                "metricLarge": "كبير",
+                "metricRisky": "خطر",
+                "metricHidden": "مخفي",
+                "archiveMetricTopLevelOverview": "نظرة عامة على المستوى الأعلى",
+                "archiveMetricMostRelevant": "الأكثر صلة",
+                "archiveNoArchiveSelected": "لم يتم تحديد أرشيف",
+                "archiveHiddenBadge": "مخفي",
+                "badgeFolder": "مجلد",
+                "badgeImage": "صورة",
+                "badgeDocument": "مستند",
+                "badgePDF": "PDF",
+                "badgeCode": "رمز",
+                "badgeVideo": "فيديو",
+                "badgeArchive": "أرشيف",
+                "badgeText": "نص",
+                "badgeLarge": "كبير",
+                "badgeFile": "ملف",
+                "badgeApp": "تطبيق",
+                "badgeInstaller": "مثبّت",
+                "badgeDiskImage": "صورة قرص",
+                "badgeScript": "سكريبت",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "تنفيذي",
+                "badgeRisky": "خطر",
+                "badgeConfig": "إعداد"
+            ]),
+            "hi": merged([
+                "toolbarOpenShort": "खोलें",
+                "toolbarExtractShort": "निकालें",
+                "toolbarMoreAccessibility": "और क्रियाएँ",
+                "archiveContentsTitle": "आर्काइव सामग्री",
+                "archiveContentsSubtitleDefault": "अनपैक करने से पहले फ़ाइलें खोजें, फ़िल्टर करें और निकालें।",
+                "searchPlaceholderArchive": "नाम, एक्सटेंशन या पथ खोजें…",
+                "archiveInspectGroupTitle": "जाँच",
+                "archiveSummaryGroupTitle": "सारांश",
+                "archiveContentsInspectorTitle": "इंस्पेक्टर",
+                "archiveContentsInspectorSubtitle": "मेटाडेटा देखें, सुरक्षित प्रीव्यू करें और केवल आवश्यक चीज़ें निकालें।",
+                "archiveMetadataTitle": "मेटाडेटा",
+                "archiveLocationTitle": "स्थान",
+                "archivePreviewTitle": "पूर्वावलोकन",
+                "archiveMetadataType": "प्रकार",
+                "archiveMetadataSize": "आकार",
+                "archiveMetadataModified": "संशोधित",
+                "archiveMetadataCompression": "कम्प्रेशन",
+                "archiveMetadataCompressedSize": "संपीड़ित आकार",
+                "archiveMetadataPathInArchive": "आर्काइव में पथ",
+                "archiveMetadataArchiveName": "आर्काइव नाम",
+                "archiveMetadataParentFolder": "मूल फ़ोल्डर",
+                "filterAllItems": "सभी आइटम",
+                "filterFolders": "फ़ोल्डर",
+                "filterImages": "छवियाँ",
+                "filterDocuments": "दस्तावेज़",
+                "filterCode": "कोड",
+                "filterVideos": "वीडियो",
+                "filterArchives": "आर्काइव",
+                "filterLargeFiles": "बड़ी फ़ाइलें",
+                "filterRecentlyViewed": "हाल में देखे गए",
+                "filterRiskyFiles": "जोखिमपूर्ण फ़ाइलें",
+                "filterHiddenJunkFiles": "छिपी और जंक",
+                "metricItems": "आइटम",
+                "metricCode": "कोड",
+                "metricFolders": "फ़ोल्डर",
+                "metricDocuments": "दस्तावेज़",
+                "metricImages": "छवियाँ",
+                "metricVideos": "वीडियो",
+                "metricLarge": "बड़ा",
+                "metricRisky": "जोखिम",
+                "metricHidden": "छिपा",
+                "archiveMetricTopLevelOverview": "शीर्ष स्तर अवलोकन",
+                "archiveMetricMostRelevant": "सबसे प्रासंगिक",
+                "archiveNoArchiveSelected": "कोई आर्काइव चयनित नहीं",
+                "archiveHiddenBadge": "छिपा",
+                "badgeFolder": "फ़ोल्डर",
+                "badgeImage": "छवि",
+                "badgeDocument": "दस्तावेज़",
+                "badgePDF": "PDF",
+                "badgeCode": "कोड",
+                "badgeVideo": "वीडियो",
+                "badgeArchive": "आर्काइव",
+                "badgeText": "पाठ",
+                "badgeLarge": "बड़ी फ़ाइल",
+                "badgeFile": "फ़ाइल",
+                "badgeApp": "ऐप",
+                "badgeInstaller": "इंस्टॉलर",
+                "badgeDiskImage": "डिस्क इमेज",
+                "badgeScript": "स्क्रिप्ट",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "एग्जीक्यूट",
+                "badgeRisky": "जोखिम",
+                "badgeConfig": "कॉन्फ़िग"
+            ]),
+            "id": merged([
+                "toolbarOpenShort": "Buka",
+                "toolbarExtractShort": "Ekstrak",
+                "toolbarMoreAccessibility": "Tindakan lain",
+                "archiveContentsTitle": "Isi arsip",
+                "archiveContentsSubtitleDefault": "Cari, saring, dan ekstrak file sebelum membongkar arsip.",
+                "searchPlaceholderArchive": "Cari nama, ekstensi, atau path…",
+                "archiveInspectGroupTitle": "Inspeksi",
+                "archiveSummaryGroupTitle": "Ringkasan",
+                "archiveContentsInspectorTitle": "Inspector",
+                "archiveContentsInspectorSubtitle": "Periksa metadata, pratinjau dengan aman, dan ekstrak hanya yang Anda butuhkan.",
+                "archiveMetadataTitle": "Metadata",
+                "archiveLocationTitle": "Lokasi",
+                "archivePreviewTitle": "Pratinjau",
+                "archiveMetadataType": "Jenis",
+                "archiveMetadataSize": "Ukuran",
+                "archiveMetadataModified": "Diubah",
+                "archiveMetadataCompression": "Kompresi",
+                "archiveMetadataCompressedSize": "Ukuran terkompresi",
+                "archiveMetadataPathInArchive": "Path di dalam arsip",
+                "archiveMetadataArchiveName": "Nama arsip",
+                "archiveMetadataParentFolder": "Folder induk",
+                "filterAllItems": "Semua item",
+                "filterFolders": "Folder",
+                "filterImages": "Gambar",
+                "filterDocuments": "Dokumen",
+                "filterCode": "Kode",
+                "filterVideos": "Video",
+                "filterArchives": "Arsip",
+                "filterLargeFiles": "File besar",
+                "filterRecentlyViewed": "Baru dilihat",
+                "filterRiskyFiles": "File berisiko",
+                "filterHiddenJunkFiles": "Tersembunyi & sampah",
+                "metricItems": "Item",
+                "metricCode": "Kode",
+                "metricFolders": "Folder",
+                "metricDocuments": "Dokumen",
+                "metricImages": "Gambar",
+                "metricVideos": "Video",
+                "metricLarge": "Besar",
+                "metricRisky": "Berisiko",
+                "metricHidden": "Tersembunyi",
+                "archiveMetricTopLevelOverview": "Ikhtisar tingkat atas",
+                "archiveMetricMostRelevant": "Paling relevan",
+                "archiveNoArchiveSelected": "Tidak ada arsip dipilih",
+                "archiveHiddenBadge": "TERSEMBUNYI",
+                "badgeFolder": "FOLDER",
+                "badgeImage": "GAMBAR",
+                "badgeDocument": "DOKUMEN",
+                "badgePDF": "PDF",
+                "badgeCode": "KODE",
+                "badgeVideo": "VIDEO",
+                "badgeArchive": "ARSIP",
+                "badgeText": "TEKS",
+                "badgeLarge": "BESAR",
+                "badgeFile": "FILE",
+                "badgeApp": "APP",
+                "badgeInstaller": "INSTALLER",
+                "badgeDiskImage": "DISK IMAGE",
+                "badgeScript": "SCRIPT",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "EXEC",
+                "badgeRisky": "BERISIKO",
+                "badgeConfig": "KONFIG"
+            ]),
+            "ms": merged([
+                "toolbarOpenShort": "Buka",
+                "toolbarExtractShort": "Ekstrak",
+                "toolbarMoreAccessibility": "Tindakan lain",
+                "archiveContentsTitle": "Kandungan arkib",
+                "archiveContentsSubtitleDefault": "Cari, tapis dan ekstrak fail sebelum nyahmampat.",
+                "searchPlaceholderArchive": "Cari nama, sambungan atau laluan…",
+                "archiveInspectGroupTitle": "Periksa",
+                "archiveSummaryGroupTitle": "Ringkasan",
+                "archiveContentsInspectorTitle": "Inspector",
+                "archiveContentsInspectorSubtitle": "Periksa metadata, pratonton dengan selamat dan ekstrak hanya yang diperlukan.",
+                "archiveMetadataTitle": "Metadata",
+                "archiveLocationTitle": "Lokasi",
+                "archivePreviewTitle": "Pratonton",
+                "archiveMetadataType": "Jenis",
+                "archiveMetadataSize": "Saiz",
+                "archiveMetadataModified": "Diubah suai",
+                "archiveMetadataCompression": "Pemampatan",
+                "archiveMetadataCompressedSize": "Saiz termampat",
+                "archiveMetadataPathInArchive": "Laluan dalam arkib",
+                "archiveMetadataArchiveName": "Nama arkib",
+                "archiveMetadataParentFolder": "Folder induk",
+                "filterAllItems": "Semua item",
+                "filterFolders": "Folder",
+                "filterImages": "Imej",
+                "filterDocuments": "Dokumen",
+                "filterCode": "Kod",
+                "filterVideos": "Video",
+                "filterArchives": "Arkib",
+                "filterLargeFiles": "Fail besar",
+                "filterRecentlyViewed": "Baru dilihat",
+                "filterRiskyFiles": "Fail berisiko",
+                "filterHiddenJunkFiles": "Tersembunyi & sampah",
+                "metricItems": "Item",
+                "metricCode": "Kod",
+                "metricFolders": "Folder",
+                "metricDocuments": "Dokumen",
+                "metricImages": "Imej",
+                "metricVideos": "Video",
+                "metricLarge": "Besar",
+                "metricRisky": "Risiko",
+                "metricHidden": "Tersembunyi",
+                "archiveMetricTopLevelOverview": "Gambaran tahap atas",
+                "archiveMetricMostRelevant": "Paling relevan",
+                "archiveNoArchiveSelected": "Tiada arkib dipilih",
+                "archiveHiddenBadge": "TERSEMBUNYI",
+                "badgeFolder": "FOLDER",
+                "badgeImage": "IMEJ",
+                "badgeDocument": "DOKUMEN",
+                "badgePDF": "PDF",
+                "badgeCode": "KOD",
+                "badgeVideo": "VIDEO",
+                "badgeArchive": "ARKIB",
+                "badgeText": "TEKS",
+                "badgeLarge": "BESAR",
+                "badgeFile": "FAIL",
+                "badgeApp": "APP",
+                "badgeInstaller": "INSTALLER",
+                "badgeDiskImage": "DISK IMAGE",
+                "badgeScript": "SKRIP",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "EXEC",
+                "badgeRisky": "RISIKO",
+                "badgeConfig": "KONFIG"
+            ]),
+            "vi": merged([
+                "toolbarOpenShort": "Mở",
+                "toolbarExtractShort": "Giải nén",
+                "toolbarMoreAccessibility": "Thao tác khác",
+                "archiveContentsTitle": "Nội dung tệp nén",
+                "archiveContentsSubtitleDefault": "Tìm kiếm, lọc và trích xuất tệp trước khi giải nén.",
+                "searchPlaceholderArchive": "Tìm tên, phần mở rộng hoặc đường dẫn…",
+                "archiveInspectGroupTitle": "Kiểm tra",
+                "archiveSummaryGroupTitle": "Tóm tắt",
+                "archiveContentsInspectorTitle": "Inspector",
+                "archiveContentsInspectorSubtitle": "Kiểm tra metadata, xem trước an toàn và chỉ trích xuất những gì bạn cần.",
+                "archiveMetadataTitle": "Metadata",
+                "archiveLocationTitle": "Vị trí",
+                "archivePreviewTitle": "Xem trước",
+                "archiveMetadataType": "Loại",
+                "archiveMetadataSize": "Kích thước",
+                "archiveMetadataModified": "Đã sửa",
+                "archiveMetadataCompression": "Nén",
+                "archiveMetadataCompressedSize": "Kích thước nén",
+                "archiveMetadataPathInArchive": "Đường dẫn trong tệp nén",
+                "archiveMetadataArchiveName": "Tên tệp nén",
+                "archiveMetadataParentFolder": "Thư mục cha",
+                "filterAllItems": "Tất cả mục",
+                "filterFolders": "Thư mục",
+                "filterImages": "Hình ảnh",
+                "filterDocuments": "Tài liệu",
+                "filterCode": "Mã",
+                "filterVideos": "Video",
+                "filterArchives": "Tệp nén",
+                "filterLargeFiles": "Tệp lớn",
+                "filterRecentlyViewed": "Đã xem gần đây",
+                "filterRiskyFiles": "Tệp rủi ro",
+                "filterHiddenJunkFiles": "Ẩn & rác",
+                "metricItems": "Mục",
+                "metricCode": "Mã",
+                "metricFolders": "Thư mục",
+                "metricDocuments": "Tài liệu",
+                "metricImages": "Hình ảnh",
+                "metricVideos": "Video",
+                "metricLarge": "Lớn",
+                "metricRisky": "Rủi ro",
+                "metricHidden": "Ẩn",
+                "archiveMetricTopLevelOverview": "Tổng quan cấp cao nhất",
+                "archiveMetricMostRelevant": "Liên quan nhất",
+                "archiveNoArchiveSelected": "Chưa chọn tệp nén",
+                "archiveHiddenBadge": "ẨN",
+                "badgeFolder": "THƯ MỤC",
+                "badgeImage": "HÌNH ẢNH",
+                "badgeDocument": "TÀI LIỆU",
+                "badgePDF": "PDF",
+                "badgeCode": "MÃ",
+                "badgeVideo": "VIDEO",
+                "badgeArchive": "TỆP NÉN",
+                "badgeText": "VĂN BẢN",
+                "badgeLarge": "LỚN",
+                "badgeFile": "TỆP",
+                "badgeApp": "APP",
+                "badgeInstaller": "INSTALLER",
+                "badgeDiskImage": "DISK IMAGE",
+                "badgeScript": "SCRIPT",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "EXEC",
+                "badgeRisky": "RỦI RO",
+                "badgeConfig": "CẤU HÌNH"
+            ]),
+            "th": merged([
+                "toolbarOpenShort": "เปิด",
+                "toolbarExtractShort": "แตกไฟล์",
+                "toolbarMoreAccessibility": "การทำงานอื่น",
+                "archiveContentsTitle": "เนื้อหาในไฟล์บีบอัด",
+                "archiveContentsSubtitleDefault": "ค้นหา กรอง และแตกไฟล์ก่อนคลายการบีบอัด",
+                "searchPlaceholderArchive": "ค้นหาชื่อ นามสกุล หรือพาธ…",
+                "archiveInspectGroupTitle": "ตรวจสอบ",
+                "archiveSummaryGroupTitle": "สรุป",
+                "archiveContentsInspectorTitle": "Inspector",
+                "archiveContentsInspectorSubtitle": "ตรวจดูเมตะดาตา พรีวิวอย่างปลอดภัย และแตกเฉพาะสิ่งที่ต้องการ",
+                "archiveMetadataTitle": "เมตะดาตา",
+                "archiveLocationTitle": "ตำแหน่ง",
+                "archivePreviewTitle": "ตัวอย่าง",
+                "archiveMetadataType": "ประเภท",
+                "archiveMetadataSize": "ขนาด",
+                "archiveMetadataModified": "แก้ไข",
+                "archiveMetadataCompression": "การบีบอัด",
+                "archiveMetadataCompressedSize": "ขนาดหลังบีบอัด",
+                "archiveMetadataPathInArchive": "พาธในไฟล์บีบอัด",
+                "archiveMetadataArchiveName": "ชื่อไฟล์บีบอัด",
+                "archiveMetadataParentFolder": "โฟลเดอร์แม่",
+                "filterAllItems": "ทั้งหมด",
+                "filterFolders": "โฟลเดอร์",
+                "filterImages": "รูปภาพ",
+                "filterDocuments": "เอกสาร",
+                "filterCode": "โค้ด",
+                "filterVideos": "วิดีโอ",
+                "filterArchives": "ไฟล์บีบอัด",
+                "filterLargeFiles": "ไฟล์ใหญ่",
+                "filterRecentlyViewed": "ดูล่าสุด",
+                "filterRiskyFiles": "ไฟล์เสี่ยง",
+                "filterHiddenJunkFiles": "ซ่อนและขยะ",
+                "metricItems": "รายการ",
+                "metricCode": "โค้ด",
+                "metricFolders": "โฟลเดอร์",
+                "metricDocuments": "เอกสาร",
+                "metricImages": "รูปภาพ",
+                "metricVideos": "วิดีโอ",
+                "metricLarge": "ใหญ่",
+                "metricRisky": "เสี่ยง",
+                "metricHidden": "ซ่อน",
+                "archiveMetricTopLevelOverview": "ภาพรวมระดับบนสุด",
+                "archiveMetricMostRelevant": "เกี่ยวข้องมากที่สุด",
+                "archiveNoArchiveSelected": "ยังไม่ได้เลือกไฟล์บีบอัด",
+                "archiveHiddenBadge": "ซ่อน",
+                "badgeFolder": "โฟลเดอร์",
+                "badgeImage": "รูปภาพ",
+                "badgeDocument": "เอกสาร",
+                "badgePDF": "PDF",
+                "badgeCode": "โค้ด",
+                "badgeVideo": "วิดีโอ",
+                "badgeArchive": "ไฟล์บีบอัด",
+                "badgeText": "ข้อความ",
+                "badgeLarge": "ใหญ่",
+                "badgeFile": "ไฟล์",
+                "badgeApp": "APP",
+                "badgeInstaller": "INSTALLER",
+                "badgeDiskImage": "DISK IMAGE",
+                "badgeScript": "SCRIPT",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "EXEC",
+                "badgeRisky": "เสี่ยง",
+                "badgeConfig": "ตั้งค่า"
+            ]),
+            "fil": merged([
+                "toolbarOpenShort": "Buksan",
+                "toolbarExtractShort": "I-extract",
+                "toolbarMoreAccessibility": "Iba pang aksyon",
+                "archiveContentsTitle": "Laman ng archive",
+                "archiveContentsSubtitleDefault": "Maghanap, mag-filter, at mag-extract ng file bago i-unpack.",
+                "searchPlaceholderArchive": "Hanapin ang pangalan, extension, o path…",
+                "archiveInspectGroupTitle": "Suriin",
+                "archiveSummaryGroupTitle": "Buod",
+                "archiveContentsInspectorTitle": "Inspector",
+                "archiveContentsInspectorSubtitle": "Suriin ang metadata, mag-preview nang ligtas, at i-extract lang ang kailangan mo.",
+                "archiveMetadataTitle": "Metadata",
+                "archiveLocationTitle": "Lokasyon",
+                "archivePreviewTitle": "Preview",
+                "archiveMetadataType": "Uri",
+                "archiveMetadataSize": "Laki",
+                "archiveMetadataModified": "Binago",
+                "archiveMetadataCompression": "Compression",
+                "archiveMetadataCompressedSize": "Compressed size",
+                "archiveMetadataPathInArchive": "Path sa archive",
+                "archiveMetadataArchiveName": "Pangalan ng archive",
+                "archiveMetadataParentFolder": "Parent folder",
+                "filterAllItems": "Lahat ng item",
+                "filterFolders": "Mga folder",
+                "filterImages": "Mga larawan",
+                "filterDocuments": "Mga dokumento",
+                "filterCode": "Code",
+                "filterVideos": "Mga video",
+                "filterArchives": "Mga archive",
+                "filterLargeFiles": "Malalaking file",
+                "filterRecentlyViewed": "Kamakailang tiningnan",
+                "filterRiskyFiles": "Mapanganib na file",
+                "filterHiddenJunkFiles": "Nakatago at junk",
+                "metricItems": "Item",
+                "metricCode": "Code",
+                "metricFolders": "Folder",
+                "metricDocuments": "Dokumento",
+                "metricImages": "Larawan",
+                "metricVideos": "Video",
+                "metricLarge": "Malaki",
+                "metricRisky": "Panganib",
+                "metricHidden": "Nakatago",
+                "archiveMetricTopLevelOverview": "Pangkalahatang top level",
+                "archiveMetricMostRelevant": "Pinakaangkop",
+                "archiveNoArchiveSelected": "Walang napiling archive",
+                "archiveHiddenBadge": "NAKATAGO",
+                "badgeFolder": "FOLDER",
+                "badgeImage": "LARAWAN",
+                "badgeDocument": "DOKUMENTO",
+                "badgePDF": "PDF",
+                "badgeCode": "CODE",
+                "badgeVideo": "VIDEO",
+                "badgeArchive": "ARCHIVE",
+                "badgeText": "TEKSTO",
+                "badgeLarge": "MALAKI",
+                "badgeFile": "FILE",
+                "badgeApp": "APP",
+                "badgeInstaller": "INSTALLER",
+                "badgeDiskImage": "DISK IMAGE",
+                "badgeScript": "SCRIPT",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "EXEC",
+                "badgeRisky": "RISKY",
+                "badgeConfig": "CONFIG"
+            ]),
+            "bn": merged([
+                "toolbarOpenShort": "খুলুন",
+                "toolbarExtractShort": "এক্সট্র্যাক্ট",
+                "toolbarMoreAccessibility": "আরও কাজ",
+                "archiveContentsTitle": "আর্কাইভের বিষয়বস্তু",
+                "archiveContentsSubtitleDefault": "আনপ্যাক করার আগে ফাইল খুঁজুন, ফিল্টার করুন এবং এক্সট্র্যাক্ট করুন।",
+                "searchPlaceholderArchive": "নাম, এক্সটেনশন বা পাথ খুঁজুন…",
+                "archiveInspectGroupTitle": "পরিদর্শন",
+                "archiveSummaryGroupTitle": "সারাংশ",
+                "archiveContentsInspectorTitle": "Inspector",
+                "archiveContentsInspectorSubtitle": "মেটাডেটা দেখুন, নিরাপদে প্রিভিউ করুন এবং শুধু প্রয়োজনীয় জিনিস এক্সট্র্যাক্ট করুন।",
+                "archiveMetadataTitle": "মেটাডেটা",
+                "archiveLocationTitle": "অবস্থান",
+                "archivePreviewTitle": "প্রিভিউ",
+                "archiveMetadataType": "ধরন",
+                "archiveMetadataSize": "আকার",
+                "archiveMetadataModified": "পরিবর্তিত",
+                "archiveMetadataCompression": "কম্প্রেশন",
+                "archiveMetadataCompressedSize": "সংকুচিত আকার",
+                "archiveMetadataPathInArchive": "আর্কাইভের ভিতরের পথ",
+                "archiveMetadataArchiveName": "আর্কাইভের নাম",
+                "archiveMetadataParentFolder": "মূল ফোল্ডার",
+                "filterAllItems": "সব আইটেম",
+                "filterFolders": "ফোল্ডার",
+                "filterImages": "ছবি",
+                "filterDocuments": "নথি",
+                "filterCode": "কোড",
+                "filterVideos": "ভিডিও",
+                "filterArchives": "আর্কাইভ",
+                "filterLargeFiles": "বড় ফাইল",
+                "filterRecentlyViewed": "সম্প্রতি দেখা",
+                "filterRiskyFiles": "ঝুঁকিপূর্ণ ফাইল",
+                "filterHiddenJunkFiles": "লুকানো ও জাঙ্ক",
+                "metricItems": "আইটেম",
+                "metricCode": "কোড",
+                "metricFolders": "ফোল্ডার",
+                "metricDocuments": "নথি",
+                "metricImages": "ছবি",
+                "metricVideos": "ভিডিও",
+                "metricLarge": "বড়",
+                "metricRisky": "ঝুঁকি",
+                "metricHidden": "লুকানো",
+                "archiveMetricTopLevelOverview": "শীর্ষ স্তরের সারাংশ",
+                "archiveMetricMostRelevant": "সবচেয়ে প্রাসঙ্গিক",
+                "archiveNoArchiveSelected": "কোনো আর্কাইভ নির্বাচিত নয়",
+                "archiveHiddenBadge": "লুকানো",
+                "badgeFolder": "ফোল্ডার",
+                "badgeImage": "ছবি",
+                "badgeDocument": "নথি",
+                "badgePDF": "PDF",
+                "badgeCode": "কোড",
+                "badgeVideo": "ভিডিও",
+                "badgeArchive": "আর্কাইভ",
+                "badgeText": "টেক্সট",
+                "badgeLarge": "বড়",
+                "badgeFile": "ফাইল",
+                "badgeApp": "APP",
+                "badgeInstaller": "INSTALLER",
+                "badgeDiskImage": "DISK IMAGE",
+                "badgeScript": "SCRIPT",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "EXEC",
+                "badgeRisky": "ঝুঁকি",
+                "badgeConfig": "কনফিগ"
+            ]),
+            "ur": merged([
+                "toolbarOpenShort": "کھولیں",
+                "toolbarExtractShort": "نکالیں",
+                "toolbarMoreAccessibility": "مزید کارروائیاں",
+                "archiveContentsTitle": "آرکائیو کا مواد",
+                "archiveContentsSubtitleDefault": "کھولنے سے پہلے فائلیں تلاش کریں، فلٹر کریں اور نکالیں۔",
+                "searchPlaceholderArchive": "نام، ایکسٹینشن یا راستہ تلاش کریں…",
+                "archiveInspectGroupTitle": "معائنہ",
+                "archiveSummaryGroupTitle": "خلاصہ",
+                "archiveContentsInspectorTitle": "Inspector",
+                "archiveContentsInspectorSubtitle": "میٹا ڈیٹا دیکھیں، محفوظ پیش نظارہ کریں، اور صرف مطلوبہ چیزیں نکالیں۔",
+                "archiveMetadataTitle": "میٹا ڈیٹا",
+                "archiveLocationTitle": "مقام",
+                "archivePreviewTitle": "پیش نظارہ",
+                "archiveMetadataType": "قسم",
+                "archiveMetadataSize": "سائز",
+                "archiveMetadataModified": "ترمیم شدہ",
+                "archiveMetadataCompression": "کمپریشن",
+                "archiveMetadataCompressedSize": "کمپریس شدہ سائز",
+                "archiveMetadataPathInArchive": "آرکائیو کے اندر راستہ",
+                "archiveMetadataArchiveName": "آرکائیو کا نام",
+                "archiveMetadataParentFolder": "والد فولڈر",
+                "filterAllItems": "تمام آئٹمز",
+                "filterFolders": "فولڈرز",
+                "filterImages": "تصاویر",
+                "filterDocuments": "دستاویزات",
+                "filterCode": "کوڈ",
+                "filterVideos": "ویڈیوز",
+                "filterArchives": "آرکائیوز",
+                "filterLargeFiles": "بڑی فائلیں",
+                "filterRecentlyViewed": "حال ہی میں دیکھی گئی",
+                "filterRiskyFiles": "خطرناک فائلیں",
+                "filterHiddenJunkFiles": "پوشیدہ اور ردی",
+                "metricItems": "آئٹمز",
+                "metricCode": "کوڈ",
+                "metricFolders": "فولڈرز",
+                "metricDocuments": "دستاویزات",
+                "metricImages": "تصاویر",
+                "metricVideos": "ویڈیوز",
+                "metricLarge": "بڑی",
+                "metricRisky": "خطرہ",
+                "metricHidden": "پوشیدہ",
+                "archiveMetricTopLevelOverview": "اوپر کی سطح کا خلاصہ",
+                "archiveMetricMostRelevant": "سب سے زیادہ متعلقہ",
+                "archiveNoArchiveSelected": "کوئی آرکائیو منتخب نہیں",
+                "archiveHiddenBadge": "پوشیدہ",
+                "badgeFolder": "فولڈر",
+                "badgeImage": "تصویر",
+                "badgeDocument": "دستاویز",
+                "badgePDF": "PDF",
+                "badgeCode": "کوڈ",
+                "badgeVideo": "ویڈیو",
+                "badgeArchive": "آرکائیو",
+                "badgeText": "متن",
+                "badgeLarge": "بڑی",
+                "badgeFile": "فائل",
+                "badgeApp": "APP",
+                "badgeInstaller": "INSTALLER",
+                "badgeDiskImage": "DISK IMAGE",
+                "badgeScript": "SCRIPT",
+                "badgeWindows": "WINDOWS",
+                "badgePowerShell": "POWERSHELL",
+                "badgeJava": "JAVA",
+                "badgeExec": "EXEC",
+                "badgeRisky": "خطرہ",
+                "badgeConfig": "کنفیگ"
+            ]),
             "de": merged([
                 "toolbarOpenShort": "Öffnen",
                 "toolbarExtractShort": "Entpacken",
@@ -502,7 +1311,6 @@ enum L10n {
                 "archiveBatchExtractCustomTitle": "Eigene Typen extrahieren",
                 "archiveProTag": "Pro",
                 "archiveArchivesOpen": "Archive geöffnet",
-                "archiveRestorePurchaseFuture": "Die Kaufwiederherstellung wird nach der App-Store-Integration verfügbar sein.",
                 "archiveFewItemsHint": "Element auswählen, um Details zu sehen, oder Aktionen zum Extrahieren verwenden.",
                 "archiveHiddenBadge": "VERSTECKT",
                 "archiveActionUnlockFullIndex": "Vollständigen Index freischalten",
@@ -687,7 +1495,6 @@ enum L10n {
                 "archiveBatchExtractCustomTitle": "Extraer tipos personalizados",
                 "archiveProTag": "Pro",
                 "archiveArchivesOpen": "Archivos abiertos",
-                "archiveRestorePurchaseFuture": "La restauración de compras estará disponible después de la integración con App Store.",
                 "archiveFewItemsHint": "Selecciona un elemento para inspeccionarlo o usa Acciones para extraer.",
                 "archiveHiddenBadge": "OCULTO",
                 "archiveActionUnlockFullIndex": "Desbloquear índice completo",
@@ -872,7 +1679,6 @@ enum L10n {
                 "archiveBatchExtractCustomTitle": "Extraire des types personnalisés",
                 "archiveProTag": "Pro",
                 "archiveArchivesOpen": "Archives ouvertes",
-                "archiveRestorePurchaseFuture": "La restauration d’achat sera disponible après l’intégration de l’App Store.",
                 "archiveFewItemsHint": "Sélectionnez un élément pour l’inspecter ou utilisez Actions pour extraire.",
                 "archiveHiddenBadge": "CACHÉ",
                 "archiveActionUnlockFullIndex": "Débloquer l’index complet",
@@ -1057,7 +1863,6 @@ enum L10n {
                 "archiveBatchExtractCustomTitle": "Extrair tipos personalizados",
                 "archiveProTag": "Pro",
                 "archiveArchivesOpen": "Arquivos abertos",
-                "archiveRestorePurchaseFuture": "A restauração de compra estará disponível após a integração com a App Store.",
                 "archiveFewItemsHint": "Selecione um item para inspecionar ou use Ações para extrair.",
                 "archiveHiddenBadge": "OCULTO",
                 "archiveActionUnlockFullIndex": "Desbloquear índice completo",
@@ -1242,7 +2047,6 @@ enum L10n {
                 "archiveBatchExtractCustomTitle": "Extrair tipos personalizados",
                 "archiveProTag": "Pro",
                 "archiveArchivesOpen": "Arquivos abertos",
-                "archiveRestorePurchaseFuture": "A reposição de compras estará disponível após a integração com a App Store.",
                 "archiveFewItemsHint": "Selecione um item para inspecionar ou use Ações para extrair.",
                 "archiveHiddenBadge": "OCULTO",
                 "archiveActionUnlockFullIndex": "Desbloquear índice completo",
@@ -1263,6 +2067,85 @@ enum L10n {
             return string(.archiveActionUpgradePro)
         case .toolbarProTooltipActive:
             return string(.statusProActive)
+        case .archiveKindFolder:
+            return localizedArchiveKindLabel(
+                explicit: "Folder",
+                chineseHans: "文件夹",
+                chineseHant: "資料夾",
+                fallbackKey: .filterFolders
+            )
+        case .archiveKindImage:
+            return localizedArchiveKindLabel(
+                explicit: "Image",
+                chineseHans: "图片",
+                chineseHant: "圖片",
+                fallbackKey: .filterImages
+            )
+        case .archiveKindDocument:
+            return localizedArchiveKindLabel(
+                explicit: "Document",
+                chineseHans: "文档",
+                chineseHant: "文件",
+                fallbackKey: .filterDocuments
+            )
+        case .archiveKindCode:
+            return localizedArchiveKindLabel(
+                explicit: "Code",
+                chineseHans: "代码",
+                chineseHant: "程式碼",
+                fallbackKey: .filterCode
+            )
+        case .archiveKindVideo:
+            return localizedArchiveKindLabel(
+                explicit: "Video",
+                chineseHans: "视频",
+                chineseHant: "影片",
+                fallbackKey: .filterVideos
+            )
+        case .archiveKindLargeFile:
+            return localizedArchiveKindLabel(
+                explicit: "Large File",
+                chineseHans: "大文件",
+                chineseHant: "大型檔案",
+                fallbackKey: .filterLargeFiles
+            )
+        case .archiveKindArchive:
+            return localizedArchiveKindLabel(
+                explicit: "Archive",
+                chineseHans: "压缩包",
+                chineseHant: "壓縮檔",
+                fallbackKey: .filterArchives
+            )
+        case .archiveKindText:
+            return localizedArchiveKindFallback(
+                explicit: "Text",
+                chineseHans: "文本",
+                chineseHant: "文字檔"
+            )
+        case .archiveKindFile:
+            return localizedArchiveKindFallback(
+                explicit: "File",
+                chineseHans: "文件",
+                chineseHant: "檔案"
+            )
+        case .archiveKindExecutable:
+            return localizedArchiveKindFallback(
+                explicit: "Executable",
+                chineseHans: "可执行文件",
+                chineseHant: "可執行檔"
+            )
+        case .archiveCompressionDeflate:
+            return localizedArchiveKindFallback(
+                explicit: "Deflate",
+                chineseHans: "Deflate",
+                chineseHant: "Deflate"
+            )
+        case .archiveCompressionStored:
+            return localizedArchiveKindFallback(
+                explicit: "Stored",
+                chineseHans: "存储",
+                chineseHant: "儲存"
+            )
         default:
             break
         }
@@ -1285,6 +2168,501 @@ enum L10n {
             return string(.paywallHighlightBatchExtract)
         case .riskFileDetection:
             return string(.paywallHighlightRiskScanning)
+        }
+    }
+
+    static func batchTypeTitle(_ type: ArchiveBatchType) -> String {
+        switch languageCode {
+        case "zh-Hans":
+            switch type {
+            case .images: return "图片"
+            case .pdfs: return "PDF"
+            case .videos: return "视频"
+            case .documents: return "文档"
+            case .code: return "代码文件"
+            }
+        case "zh-Hant":
+            switch type {
+            case .images: return "圖片"
+            case .pdfs: return "PDF"
+            case .videos: return "影片"
+            case .documents: return "文件"
+            case .code: return "程式碼檔案"
+            }
+        case "ja":
+            switch type {
+            case .images: return "画像"
+            case .pdfs: return "PDF"
+            case .videos: return "動画"
+            case .documents: return "書類"
+            case .code: return "コードファイル"
+            }
+        case "ko":
+            switch type {
+            case .images: return "이미지"
+            case .pdfs: return "PDF"
+            case .videos: return "동영상"
+            case .documents: return "문서"
+            case .code: return "코드 파일"
+            }
+        case "ar":
+            switch type {
+            case .images: return "الصور"
+            case .pdfs: return "PDF"
+            case .videos: return "الفيديوهات"
+            case .documents: return "المستندات"
+            case .code: return "ملفات الكود"
+            }
+        case "hi":
+            switch type {
+            case .images: return "छवियाँ"
+            case .pdfs: return "PDF"
+            case .videos: return "वीडियो"
+            case .documents: return "दस्तावेज़"
+            case .code: return "कोड फ़ाइलें"
+            }
+        case "id":
+            switch type {
+            case .images: return "Gambar"
+            case .pdfs: return "PDF"
+            case .videos: return "Video"
+            case .documents: return "Dokumen"
+            case .code: return "File Kode"
+            }
+        case "ms":
+            switch type {
+            case .images: return "Imej"
+            case .pdfs: return "PDF"
+            case .videos: return "Video"
+            case .documents: return "Dokumen"
+            case .code: return "Fail Kod"
+            }
+        case "vi":
+            switch type {
+            case .images: return "Hình ảnh"
+            case .pdfs: return "PDF"
+            case .videos: return "Video"
+            case .documents: return "Tài liệu"
+            case .code: return "Tệp mã"
+            }
+        case "th":
+            switch type {
+            case .images: return "รูปภาพ"
+            case .pdfs: return "PDF"
+            case .videos: return "วิดีโอ"
+            case .documents: return "เอกสาร"
+            case .code: return "ไฟล์โค้ด"
+            }
+        case "fil":
+            switch type {
+            case .images: return "Mga Larawan"
+            case .pdfs: return "PDF"
+            case .videos: return "Mga Video"
+            case .documents: return "Mga Dokumento"
+            case .code: return "Mga File ng Code"
+            }
+        case "bn":
+            switch type {
+            case .images: return "ছবি"
+            case .pdfs: return "PDF"
+            case .videos: return "ভিডিও"
+            case .documents: return "ডকুমেন্ট"
+            case .code: return "কোড ফাইল"
+            }
+        case "ur":
+            switch type {
+            case .images: return "تصاویر"
+            case .pdfs: return "PDF"
+            case .videos: return "ویڈیوز"
+            case .documents: return "دستاویزات"
+            case .code: return "کوڈ فائلیں"
+            }
+        case "de":
+            switch type {
+            case .images: return "Bilder"
+            case .pdfs: return "PDFs"
+            case .videos: return "Videos"
+            case .documents: return "Dokumente"
+            case .code: return "Codedateien"
+            }
+        case "es":
+            switch type {
+            case .images: return "Imágenes"
+            case .pdfs: return "PDF"
+            case .videos: return "Vídeos"
+            case .documents: return "Documentos"
+            case .code: return "Archivos de código"
+            }
+        case "fr":
+            switch type {
+            case .images: return "Images"
+            case .pdfs: return "PDF"
+            case .videos: return "Vidéos"
+            case .documents: return "Documents"
+            case .code: return "Fichiers de code"
+            }
+        case "pt-BR":
+            switch type {
+            case .images: return "Imagens"
+            case .pdfs: return "PDFs"
+            case .videos: return "Vídeos"
+            case .documents: return "Documentos"
+            case .code: return "Arquivos de código"
+            }
+        case "pt-PT":
+            switch type {
+            case .images: return "Imagens"
+            case .pdfs: return "PDFs"
+            case .videos: return "Vídeos"
+            case .documents: return "Documentos"
+            case .code: return "Ficheiros de código"
+            }
+        case "ru":
+            switch type {
+            case .images: return "Изображения"
+            case .pdfs: return "PDF"
+            case .videos: return "Видео"
+            case .documents: return "Документы"
+            case .code: return "Файлы кода"
+            }
+        case "tr":
+            switch type {
+            case .images: return "Görseller"
+            case .pdfs: return "PDF'ler"
+            case .videos: return "Videolar"
+            case .documents: return "Belgeler"
+            case .code: return "Kod dosyaları"
+            }
+        case "it":
+            switch type {
+            case .images: return "Immagini"
+            case .pdfs: return "PDF"
+            case .videos: return "Video"
+            case .documents: return "Documenti"
+            case .code: return "File di codice"
+            }
+        case "nl":
+            switch type {
+            case .images: return "Afbeeldingen"
+            case .pdfs: return "PDF's"
+            case .videos: return "Video's"
+            case .documents: return "Documenten"
+            case .code: return "Codebestanden"
+            }
+        case "pl":
+            switch type {
+            case .images: return "Obrazy"
+            case .pdfs: return "PDF-y"
+            case .videos: return "Wideo"
+            case .documents: return "Dokumenty"
+            case .code: return "Pliki kodu"
+            }
+        case "uk":
+            switch type {
+            case .images: return "Зображення"
+            case .pdfs: return "PDF"
+            case .videos: return "Відео"
+            case .documents: return "Документи"
+            case .code: return "Файли коду"
+            }
+        case "fa":
+            switch type {
+            case .images: return "تصاویر"
+            case .pdfs: return "PDF"
+            case .videos: return "ویدیوها"
+            case .documents: return "اسناد"
+            case .code: return "فایل‌های کد"
+            }
+        case "sw":
+            switch type {
+            case .images: return "Picha"
+            case .pdfs: return "PDF"
+            case .videos: return "Video"
+            case .documents: return "Hati"
+            case .code: return "Faili za msimbo"
+            }
+        case "ta":
+            switch type {
+            case .images: return "படங்கள்"
+            case .pdfs: return "PDF"
+            case .videos: return "வீடியோக்கள்"
+            case .documents: return "ஆவணங்கள்"
+            case .code: return "குறியீட்டு கோப்புகள்"
+            }
+        case "te":
+            switch type {
+            case .images: return "చిత్రాలు"
+            case .pdfs: return "PDF"
+            case .videos: return "వీడియోలు"
+            case .documents: return "పత్రాలు"
+            case .code: return "కోడ్ ఫైళ్లు"
+            }
+        case "mr":
+            switch type {
+            case .images: return "प्रतिमा"
+            case .pdfs: return "PDF"
+            case .videos: return "व्हिडिओ"
+            case .documents: return "दस्तऐवज"
+            case .code: return "कोड फाइल्स"
+            }
+        default:
+            switch type {
+            case .images: return "Images"
+            case .pdfs: return "PDFs"
+            case .videos: return "Videos"
+            case .documents: return "Documents"
+            case .code: return "Code Files"
+            }
+        }
+    }
+
+    static func riskBadgeTitle(for level: ArchiveRiskLevel?) -> String {
+        switch languageCode {
+        case "zh-Hans":
+            switch level {
+            case .high: return "高风险"
+            case .medium: return "中风险"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "风险"
+            }
+        case "zh-Hant":
+            switch level {
+            case .high: return "高風險"
+            case .medium: return "中風險"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "風險"
+            }
+        case "ja":
+            switch level {
+            case .high: return "高リスク"
+            case .medium: return "中リスク"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "リスク"
+            }
+        case "ko":
+            switch level {
+            case .high: return "높은 위험"
+            case .medium: return "중간 위험"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "위험"
+            }
+        case "ar":
+            switch level {
+            case .high: return "خطر مرتفع"
+            case .medium: return "خطر متوسط"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "خطر"
+            }
+        case "hi":
+            switch level {
+            case .high: return "उच्च जोखिम"
+            case .medium: return "मध्यम जोखिम"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "जोखिम"
+            }
+        case "id":
+            switch level {
+            case .high: return "Risiko tinggi"
+            case .medium: return "Risiko sedang"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Risiko"
+            }
+        case "ms":
+            switch level {
+            case .high: return "Risiko tinggi"
+            case .medium: return "Risiko sederhana"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Risiko"
+            }
+        case "vi":
+            switch level {
+            case .high: return "Rủi ro cao"
+            case .medium: return "Rủi ro trung bình"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Rủi ro"
+            }
+        case "th":
+            switch level {
+            case .high: return "ความเสี่ยงสูง"
+            case .medium: return "ความเสี่ยงปานกลาง"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "ความเสี่ยง"
+            }
+        case "fil":
+            switch level {
+            case .high: return "Mataas na panganib"
+            case .medium: return "Katamtamang panganib"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Panganib"
+            }
+        case "bn":
+            switch level {
+            case .high: return "উচ্চ ঝুঁকি"
+            case .medium: return "মাঝারি ঝুঁকি"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "ঝুঁকি"
+            }
+        case "ur":
+            switch level {
+            case .high: return "زیادہ خطرہ"
+            case .medium: return "درمیانی خطرہ"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "خطرہ"
+            }
+        case "de":
+            switch level {
+            case .high: return "Hohes Risiko"
+            case .medium: return "Mittleres Risiko"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Risiko"
+            }
+        case "es":
+            switch level {
+            case .high: return "Riesgo alto"
+            case .medium: return "Riesgo medio"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Riesgo"
+            }
+        case "fr":
+            switch level {
+            case .high: return "Risque élevé"
+            case .medium: return "Risque moyen"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Risque"
+            }
+        case "pt-BR":
+            switch level {
+            case .high: return "Alto risco"
+            case .medium: return "Médio risco"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Risco"
+            }
+        case "pt-PT":
+            switch level {
+            case .high: return "Risco elevado"
+            case .medium: return "Risco médio"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Risco"
+            }
+        case "ru":
+            switch level {
+            case .high: return "Высокий риск"
+            case .medium: return "Средний риск"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Риск"
+            }
+        case "tr":
+            switch level {
+            case .high: return "Yüksek risk"
+            case .medium: return "Orta risk"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Risk"
+            }
+        case "it":
+            switch level {
+            case .high: return "Alto rischio"
+            case .medium: return "Rischio medio"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Rischio"
+            }
+        case "nl":
+            switch level {
+            case .high: return "Hoog risico"
+            case .medium: return "Gemiddeld risico"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Risico"
+            }
+        case "pl":
+            switch level {
+            case .high: return "Wysokie ryzyko"
+            case .medium: return "Średnie ryzyko"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Ryzyko"
+            }
+        case "uk":
+            switch level {
+            case .high: return "Високий ризик"
+            case .medium: return "Середній ризик"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Ризик"
+            }
+        case "fa":
+            switch level {
+            case .high: return "خطر بالا"
+            case .medium: return "خطر متوسط"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "خطر"
+            }
+        case "sw":
+            switch level {
+            case .high: return "Hatari kubwa"
+            case .medium: return "Hatari ya wastani"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "Hatari"
+            }
+        case "ta":
+            switch level {
+            case .high: return "அதிக ஆபத்து"
+            case .medium: return "நடுத்தர ஆபத்து"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "ஆபத்து"
+            }
+        case "te":
+            switch level {
+            case .high: return "అధిక ప్రమాదం"
+            case .medium: return "మధ్యస్థ ప్రమాదం"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "ప్రమాదం"
+            }
+        case "mr":
+            switch level {
+            case .high: return "उच्च जोखीम"
+            case .medium: return "मध्यम जोखीम"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "जोखीम"
+            }
+        default:
+            switch level {
+            case .high: return "HIGH RISK"
+            case .medium: return "MEDIUM RISK"
+            case .notice: return string(.archiveHiddenBadge)
+            case .none: return "RISK"
+            }
+        }
+    }
+
+    private static func localizedArchiveKindLabel(
+        explicit: String,
+        chineseHans: String,
+        chineseHant: String,
+        fallbackKey: Key
+    ) -> String {
+        switch languageCode {
+        case "en":
+            return explicit
+        case "zh-Hans":
+            return chineseHans
+        case "zh-Hant":
+            return chineseHant
+        default:
+            return string(fallbackKey)
+        }
+    }
+
+    private static func localizedArchiveKindFallback(
+        explicit: String,
+        chineseHans: String,
+        chineseHant: String
+    ) -> String {
+        switch languageCode {
+        case "en":
+            return explicit
+        case "zh-Hans":
+            return chineseHans
+        case "zh-Hant":
+            return chineseHant
+        default:
+            return explicit
         }
     }
 
@@ -1318,19 +2696,16 @@ enum L10n {
         ]
     }
 
-    static var paywallPriceParts: (badge: String, price: String) {
+    static var paywallPriceBadge: String {
         let raw = string(.paywallLaunchPrice)
         let separators: [Character] = [":", "："]
         for separator in separators {
             if let index = raw.firstIndex(of: separator) {
                 let badge = raw[..<index].trimmingCharacters(in: .whitespacesAndNewlines)
-                let price = raw[raw.index(after: index)...].trimmingCharacters(in: .whitespacesAndNewlines)
-                if !badge.isEmpty && !price.isEmpty {
-                    return (badge: badge, price: price)
-                }
+                if !badge.isEmpty { return badge }
             }
         }
-        return (badge: string(.paywallLaunchPrice), price: "")
+        return raw
     }
 
     private static let translations: [String: [String: String]] = [
@@ -1348,14 +2723,21 @@ enum L10n {
             "paywallFeatureBatchExtract": "Batch extract by file type",
             "paywallFeatureRiskDetection": "Risky file detection before extraction",
             "paywallLifetimePro": "Lifetime Pro",
-            "paywallLaunchPrice": "Launch price: $7.99",
+            "paywallLaunchPrice": "Launch price",
             "paywallOneTimePurchase": "One-time purchase · No subscription",
+            "paywallPriceLoading": "Loading…",
             "paywallUnlockPro": "Unlock Pro",
             "paywallRestorePurchase": "Restore Purchase",
             "paywallContinueFree": "Continue Free",
             "paywallUnlocking": "Processing…",
             "paywallRestoring": "Restoring…",
             "paywallClose": "Close",
+            "paywallPurchaseSucceeded": "PeekZip Pro unlocked.",
+            "paywallPurchasePending": "Purchase is pending approval.",
+            "paywallRestoreSucceeded": "Purchase restored.",
+            "paywallRestoreNothingFound": "No previous purchase found.",
+            "paywallPurchaseUnavailable": "PeekZip Pro is temporarily unavailable.",
+            "paywallPurchaseFailed": "Could not verify this purchase.",
             "archiveFewItemsHint": "Select an item to inspect, or use Actions to extract.",
             "toolbarOpenShort": "Open",
             "toolbarExtractShort": "Extract",
@@ -1373,9 +2755,17 @@ enum L10n {
             "archiveEmptyHeroTitle": "Preview archives before extracting",
             "archiveEmptyHeroSubtitle": "Open ZIP, RAR, 7z, TAR and more. Search, filter and extract only what you need.",
             "emptyHomeTitle": "Preview archives before extracting",
-            "emptyHomeSubtitle": "Open ZIP, RAR, 7Z, TAR and more. Search, inspect and extract only what you need.",
-            "emptyPrimaryTitle": "Open your first archive",
-            "emptyPrimarySubtitle": "Choose a file or drag one into PeekZip.",
+            "emptyHomeSubtitle": "Search, inspect and extract only what you need.",
+            "emptyPrimaryTitle": "Open an archive to start",
+            "emptyPrimarySubtitle": "Choose a file, or drag an archive into PeekZip.",
+            "emptyFeaturesTitle": "What you can do",
+            "emptyFeatureSearchTitle": "Search inside archives",
+            "emptyFeatureSearchSubtitle": "Find files by name, extension or path",
+            "emptyFeatureBrowseTitle": "Browse by file type",
+            "emptyFeatureBrowseSubtitle": "View images, documents, code and videos quickly",
+            "emptyFeatureExtractTitle": "Extract only what you need",
+            "emptyFeatureExtractSubtitle": "No need to unpack the entire archive",
+            "emptyFormatsTitle": "Supported formats",
             "emptySectionRecent": "Recent",
             "emptySectionSamples": "Samples",
             "emptySectionFormats": "Supported formats",
@@ -1554,7 +2944,6 @@ enum L10n {
             "archiveToastPathCopied": "Path copied",
             "archiveArchivesOpen": "Archives Open",
             "archiveShowingSuffix": "showing",
-            "archiveRestorePurchaseFuture": "Restore purchase will be available after App Store integration.",
             "archiveBatchExtractTitle": "Extract %@",
             "archiveBatchExtractCustomTitle": "Extract Custom Types",
             "archiveProTag": "Pro",
@@ -1562,6 +2951,26 @@ enum L10n {
             "archiveChooseDestinationFolderMessage": "Choose a destination folder.",
             "archiveExtractArchivePrompt": "Extract Archive",
             "archiveExtractSelectedItemPrompt": "Extract Selected Item",
+            "badgeFolder": "FOLDER",
+            "badgeImage": "IMAGE",
+            "badgeDocument": "DOCUMENT",
+            "badgePDF": "PDF",
+            "badgeCode": "CODE",
+            "badgeVideo": "VIDEO",
+            "badgeArchive": "ARCHIVE",
+            "badgeText": "TEXT",
+            "badgeLarge": "LARGE",
+            "badgeFile": "FILE",
+            "badgeApp": "APP",
+            "badgeInstaller": "INSTALLER",
+            "badgeDiskImage": "DISK IMAGE",
+            "badgeScript": "SCRIPT",
+            "badgeWindows": "WINDOWS",
+            "badgePowerShell": "POWERSHELL",
+            "badgeJava": "JAVA",
+            "badgeExec": "EXEC",
+            "badgeRisky": "RISKY",
+            "badgeConfig": "CONFIG",
             "passwordPromptTitle": "Unlock Archive",
             "passwordPromptMessage": "Enter the password to preview and extract this archive.",
             "passwordPromptRememberSession": "Remember password for this session",
@@ -1573,6 +2982,8 @@ enum L10n {
             "batchExtractCustomCancel": "Cancel",
             "batchExtractCustomExtract": "Extract",
             "settingsGeneralTitle": "General",
+            "settingsLanguageTitle": "Language",
+            "settingsLanguageFollowSystem": "Follow System",
             "settingsRevealAfterExtract": "Reveal after extract",
             "settingsKeepFolderStructure": "Keep folder structure when extracting selected files",
             "settingsSkipJunkFilesOnExtract": "Skip junk files on extract",
@@ -1584,7 +2995,6 @@ enum L10n {
             "settingsFree": "Free",
             "settingsProActive": "PeekZip Pro Active",
             "settingsUnlockPro": "Unlock Pro",
-            "settingsResetProForTesting": "Reset Pro for Testing",
             "settingsDefaultExtractLocationPanelTitle": "Default Extract Location",
             "settingsDefaultExtractLocationPanelMessage": "Choose a default folder for extracted archives."
         ],
@@ -1602,14 +3012,21 @@ enum L10n {
             "paywallFeatureBatchExtract": "按文件类型批量提取",
             "paywallFeatureRiskDetection": "解压前检测可疑文件",
             "paywallLifetimePro": "终身 Pro",
-            "paywallLaunchPrice": "首发价格：$7.99",
+            "paywallLaunchPrice": "首发价格",
             "paywallOneTimePurchase": "一次购买 · 无订阅",
+            "paywallPriceLoading": "加载中…",
             "paywallUnlockPro": "解锁 Pro",
             "paywallRestorePurchase": "恢复购买",
             "paywallContinueFree": "继续免费版",
             "paywallUnlocking": "处理中…",
             "paywallRestoring": "恢复中…",
             "paywallClose": "关闭",
+            "paywallPurchaseSucceeded": "已解锁 PeekZip Pro。",
+            "paywallPurchasePending": "购买正在等待确认。",
+            "paywallRestoreSucceeded": "已恢复购买。",
+            "paywallRestoreNothingFound": "没有找到可恢复的购买记录。",
+            "paywallPurchaseUnavailable": "PeekZip Pro 暂时不可用。",
+            "paywallPurchaseFailed": "无法验证此次购买。",
             "archiveFewItemsHint": "选择项目查看详情，或使用 Actions 提取文件。",
             "toolbarOpenShort": "打开",
             "toolbarExtractShort": "提取",
@@ -1627,9 +3044,17 @@ enum L10n {
             "archiveEmptyHeroTitle": "解压前预览压缩包",
             "archiveEmptyHeroSubtitle": "打开 ZIP、RAR、7z、TAR 等文件。搜索、筛选并仅提取需要的内容。",
             "emptyHomeTitle": "解压前预览压缩包",
-            "emptyHomeSubtitle": "打开 ZIP、RAR、7Z、TAR 等文件。搜索、查看并仅提取需要的内容。",
-            "emptyPrimaryTitle": "打开你的第一个压缩包",
-            "emptyPrimarySubtitle": "选择一个文件，或直接拖入 PeekZip。",
+            "emptyHomeSubtitle": "搜索、查看并只提取需要的内容。",
+            "emptyPrimaryTitle": "打开压缩包开始预览",
+            "emptyPrimarySubtitle": "选择文件，或直接拖入 PeekZip。",
+            "emptyFeaturesTitle": "你可以做什么",
+            "emptyFeatureSearchTitle": "搜索压缩包内容",
+            "emptyFeatureSearchSubtitle": "按名称、扩展名或路径快速定位文件",
+            "emptyFeatureBrowseTitle": "按文件类型浏览",
+            "emptyFeatureBrowseSubtitle": "快速查看图片、文档、代码和视频",
+            "emptyFeatureExtractTitle": "只提取需要的文件",
+            "emptyFeatureExtractSubtitle": "无需完整解压整个压缩包",
+            "emptyFormatsTitle": "支持格式",
             "emptySectionRecent": "最近使用",
             "emptySectionSamples": "示例文件",
             "emptySectionFormats": "支持的格式",
@@ -1808,7 +3233,6 @@ enum L10n {
             "archiveToastPathCopied": "已复制路径",
             "archiveArchivesOpen": "个压缩包已打开",
             "archiveShowingSuffix": "显示",
-            "archiveRestorePurchaseFuture": "恢复购买将在接入 App Store 后提供。",
             "archiveBatchExtractTitle": "提取%@",
             "archiveBatchExtractCustomTitle": "提取自定义类型",
             "archiveProTag": "Pro",
@@ -1816,6 +3240,26 @@ enum L10n {
             "archiveChooseDestinationFolderMessage": "选择一个目标文件夹。",
             "archiveExtractArchivePrompt": "提取压缩包",
             "archiveExtractSelectedItemPrompt": "提取所选项目",
+            "badgeFolder": "文件夹",
+            "badgeImage": "图片",
+            "badgeDocument": "文档",
+            "badgePDF": "PDF",
+            "badgeCode": "代码",
+            "badgeVideo": "视频",
+            "badgeArchive": "压缩包",
+            "badgeText": "文本",
+            "badgeLarge": "大文件",
+            "badgeFile": "文件",
+            "badgeApp": "应用",
+            "badgeInstaller": "安装包",
+            "badgeDiskImage": "磁盘镜像",
+            "badgeScript": "脚本",
+            "badgeWindows": "Windows",
+            "badgePowerShell": "PowerShell",
+            "badgeJava": "Java",
+            "badgeExec": "可执行",
+            "badgeRisky": "风险",
+            "badgeConfig": "配置",
             "passwordPromptTitle": "解锁压缩包",
             "passwordPromptMessage": "输入密码以预览并解压此压缩包。",
             "passwordPromptRememberSession": "记住本次会话密码",
@@ -1827,6 +3271,8 @@ enum L10n {
             "batchExtractCustomCancel": "取消",
             "batchExtractCustomExtract": "提取",
             "settingsGeneralTitle": "通用",
+            "settingsLanguageTitle": "语言",
+            "settingsLanguageFollowSystem": "跟随系统",
             "settingsRevealAfterExtract": "提取后显示",
             "settingsKeepFolderStructure": "提取所选文件时保留文件夹结构",
             "settingsSkipJunkFilesOnExtract": "提取时跳过垃圾文件",
@@ -1838,7 +3284,6 @@ enum L10n {
             "settingsFree": "免费版",
             "settingsProActive": "PeekZip Pro 已启用",
             "settingsUnlockPro": "解锁 Pro",
-            "settingsResetProForTesting": "重置 Pro 用于测试",
             "settingsDefaultExtractLocationPanelTitle": "默认提取位置",
             "settingsDefaultExtractLocationPanelMessage": "选择一个用于提取压缩包的默认文件夹。"
         ],
@@ -1856,14 +3301,21 @@ enum L10n {
             "paywallFeatureBatchExtract": "依檔案類型批次擷取",
             "paywallFeatureRiskDetection": "解壓前偵測可疑檔案",
             "paywallLifetimePro": "終身 Pro",
-            "paywallLaunchPrice": "首發價格：$7.99",
+            "paywallLaunchPrice": "首發價格",
             "paywallOneTimePurchase": "一次購買 · 無訂閱",
+            "paywallPriceLoading": "載入中…",
             "paywallUnlockPro": "解鎖 Pro",
             "paywallRestorePurchase": "恢復購買",
             "paywallContinueFree": "繼續免費版",
             "paywallUnlocking": "處理中…",
             "paywallRestoring": "恢復中…",
             "paywallClose": "關閉",
+            "paywallPurchaseSucceeded": "已解鎖 PeekZip Pro。",
+            "paywallPurchasePending": "購買正在等待確認。",
+            "paywallRestoreSucceeded": "已恢復購買。",
+            "paywallRestoreNothingFound": "找不到可恢復的購買紀錄。",
+            "paywallPurchaseUnavailable": "PeekZip Pro 暫時無法使用。",
+            "paywallPurchaseFailed": "無法驗證這次購買。",
             "archiveFewItemsHint": "選擇項目查看詳情，或使用 Actions 擷取檔案。",
             "toolbarOpenShort": "開啟",
             "toolbarExtractShort": "擷取",
@@ -1882,8 +3334,16 @@ enum L10n {
             "archiveEmptyHeroSubtitle": "開啟 ZIP、RAR、7z、TAR 等檔案。搜尋、篩選並只擷取需要的內容。",
             "emptyHomeTitle": "解壓前預覽壓縮檔",
             "emptyHomeSubtitle": "開啟 ZIP、RAR、7Z、TAR 等檔案。搜尋、查看並只擷取需要的內容。",
-            "emptyPrimaryTitle": "開啟你的第一個壓縮檔",
-            "emptyPrimarySubtitle": "選擇一個檔案，或直接拖入 PeekZip。",
+            "emptyPrimaryTitle": "開啟壓縮檔開始預覽",
+            "emptyPrimarySubtitle": "選擇一個檔案，或把壓縮檔拖入 PeekZip。",
+            "emptyFeaturesTitle": "你可以做什麼",
+            "emptyFeatureSearchTitle": "搜尋壓縮檔內容",
+            "emptyFeatureSearchSubtitle": "依名稱、擴充名或路徑快速定位檔案",
+            "emptyFeatureBrowseTitle": "依檔案類型瀏覽",
+            "emptyFeatureBrowseSubtitle": "快速查看圖片、文件、程式碼和影片",
+            "emptyFeatureExtractTitle": "只擷取需要的檔案",
+            "emptyFeatureExtractSubtitle": "無需完整解壓整個壓縮檔",
+            "emptyFormatsTitle": "支援格式",
             "emptySectionRecent": "最近使用",
             "emptySectionSamples": "範例檔案",
             "emptySectionFormats": "支援格式",
@@ -2062,7 +3522,6 @@ enum L10n {
             "archiveToastPathCopied": "已複製路徑",
             "archiveArchivesOpen": "個壓縮檔已開啟",
             "archiveShowingSuffix": "顯示",
-            "archiveRestorePurchaseFuture": "恢復購買將在接入 App Store 後提供。",
             "archiveBatchExtractTitle": "擷取%@",
             "archiveBatchExtractCustomTitle": "擷取自訂類型",
             "archiveProTag": "Pro",
@@ -2070,6 +3529,26 @@ enum L10n {
             "archiveChooseDestinationFolderMessage": "選擇一個目標資料夾。",
             "archiveExtractArchivePrompt": "擷取壓縮檔",
             "archiveExtractSelectedItemPrompt": "擷取所選項目",
+            "badgeFolder": "資料夾",
+            "badgeImage": "圖片",
+            "badgeDocument": "文件",
+            "badgePDF": "PDF",
+            "badgeCode": "程式碼",
+            "badgeVideo": "影片",
+            "badgeArchive": "壓縮檔",
+            "badgeText": "文字",
+            "badgeLarge": "大型檔案",
+            "badgeFile": "檔案",
+            "badgeApp": "App",
+            "badgeInstaller": "安裝包",
+            "badgeDiskImage": "磁碟映像",
+            "badgeScript": "腳本",
+            "badgeWindows": "Windows",
+            "badgePowerShell": "PowerShell",
+            "badgeJava": "Java",
+            "badgeExec": "可執行",
+            "badgeRisky": "風險",
+            "badgeConfig": "設定",
             "passwordPromptTitle": "解鎖壓縮檔",
             "passwordPromptMessage": "輸入密碼以預覽並解壓此壓縮檔。",
             "passwordPromptRememberSession": "記住本次工作階段密碼",
@@ -2081,6 +3560,8 @@ enum L10n {
             "batchExtractCustomCancel": "取消",
             "batchExtractCustomExtract": "擷取",
             "settingsGeneralTitle": "一般",
+            "settingsLanguageTitle": "語言",
+            "settingsLanguageFollowSystem": "跟隨系統",
             "settingsRevealAfterExtract": "擷取後顯示",
             "settingsKeepFolderStructure": "擷取所選檔案時保留資料夾結構",
             "settingsSkipJunkFilesOnExtract": "擷取時跳過垃圾檔案",
@@ -2092,7 +3573,6 @@ enum L10n {
             "settingsFree": "免費版",
             "settingsProActive": "PeekZip Pro 已啟用",
             "settingsUnlockPro": "解鎖 Pro",
-            "settingsResetProForTesting": "重設 Pro 供測試",
             "settingsDefaultExtractLocationPanelTitle": "預設擷取位置",
             "settingsDefaultExtractLocationPanelMessage": "選擇一個用於擷取壓縮檔的預設資料夾。"
         ],
@@ -2110,7 +3590,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "種類別の一括抽出",
             "paywallFeatureRiskDetection": "展開前の危険ファイル検出",
             "paywallLifetimePro": "買い切り Pro",
-            "paywallLaunchPrice": "発売価格: $7.99",
+            "paywallLaunchPrice": "発売価格",
             "paywallOneTimePurchase": "買い切り · サブスクリプションなし",
             "paywallUnlockPro": "Pro を解放",
             "paywallRestorePurchase": "購入を復元",
@@ -2134,7 +3614,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "파일 형식별 일괄 추출",
             "paywallFeatureRiskDetection": "추출 전 위험 파일 감지",
             "paywallLifetimePro": "평생 Pro",
-            "paywallLaunchPrice": "출시 가격: $7.99",
+            "paywallLaunchPrice": "출시 가격",
             "paywallOneTimePurchase": "1회 결제 · 구독 없음",
             "paywallUnlockPro": "Pro 잠금 해제",
             "paywallRestorePurchase": "구매 복원",
@@ -2158,7 +3638,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "استخراج دفعي حسب نوع الملف",
             "paywallFeatureRiskDetection": "اكتشاف الملفات الخطرة قبل الاستخراج",
             "paywallLifetimePro": "Pro مدى الحياة",
-            "paywallLaunchPrice": "سعر الإطلاق: $7.99",
+            "paywallLaunchPrice": "سعر الإطلاق",
             "paywallOneTimePurchase": "شراء لمرة واحدة · بدون اشتراك",
             "paywallUnlockPro": "فتح Pro",
             "paywallRestorePurchase": "استعادة الشراء",
@@ -2182,7 +3662,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "फ़ाइल प्रकार के अनुसार बैच एक्सट्रैक्ट",
             "paywallFeatureRiskDetection": "एक्सट्रैक्ट से पहले जोखिमपूर्ण फ़ाइल पहचान",
             "paywallLifetimePro": "Lifetime Pro",
-            "paywallLaunchPrice": "लॉन्च मूल्य: $7.99",
+            "paywallLaunchPrice": "लॉन्च मूल्य",
             "paywallOneTimePurchase": "एक बार खरीदें · कोई सब्सक्रिप्शन नहीं",
             "paywallUnlockPro": "Pro अनलॉक करें",
             "paywallRestorePurchase": "खरीद पुनर्स्थापित करें",
@@ -2206,7 +3686,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "Ekstrak batch berdasarkan jenis file",
             "paywallFeatureRiskDetection": "Deteksi file berisiko sebelum ekstraksi",
             "paywallLifetimePro": "Pro seumur hidup",
-            "paywallLaunchPrice": "Harga peluncuran: $7.99",
+            "paywallLaunchPrice": "Harga peluncuran",
             "paywallOneTimePurchase": "Beli sekali · Tanpa langganan",
             "paywallUnlockPro": "Buka Pro",
             "paywallRestorePurchase": "Pulihkan pembelian",
@@ -2230,7 +3710,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "Ekstrak kumpulan mengikut jenis fail",
             "paywallFeatureRiskDetection": "Pengesanan fail berisiko sebelum ekstrak",
             "paywallLifetimePro": "Pro seumur hidup",
-            "paywallLaunchPrice": "Harga pelancaran: $7.99",
+            "paywallLaunchPrice": "Harga pelancaran",
             "paywallOneTimePurchase": "Bayar sekali · Tiada langganan",
             "paywallUnlockPro": "Buka Pro",
             "paywallRestorePurchase": "Pulihkan pembelian",
@@ -2254,7 +3734,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "Trích xuất hàng loạt theo loại tệp",
             "paywallFeatureRiskDetection": "Phát hiện tệp rủi ro trước khi giải nén",
             "paywallLifetimePro": "Pro trọn đời",
-            "paywallLaunchPrice": "Giá ra mắt: $7.99",
+            "paywallLaunchPrice": "Giá ra mắt",
             "paywallOneTimePurchase": "Thanh toán một lần · Không đăng ký",
             "paywallUnlockPro": "Mở Pro",
             "paywallRestorePurchase": "Khôi phục mua hàng",
@@ -2278,7 +3758,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "แตกไฟล์ตามประเภทแบบกลุ่ม",
             "paywallFeatureRiskDetection": "ตรวจหาไฟล์เสี่ยงก่อนแตกไฟล์",
             "paywallLifetimePro": "Pro ตลอดชีพ",
-            "paywallLaunchPrice": "ราคาเปิดตัว: $7.99",
+            "paywallLaunchPrice": "ราคาเปิดตัว",
             "paywallOneTimePurchase": "จ่ายครั้งเดียว · ไม่มีค่าสมาชิก",
             "paywallUnlockPro": "ปลดล็อก Pro",
             "paywallRestorePurchase": "กู้คืนการซื้อ",
@@ -2302,7 +3782,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "Batch extract ayon sa file type",
             "paywallFeatureRiskDetection": "Pagtukoy ng risky file bago mag-extract",
             "paywallLifetimePro": "Lifetime Pro",
-            "paywallLaunchPrice": "Launch price: $7.99",
+            "paywallLaunchPrice": "Launch price",
             "paywallOneTimePurchase": "Isang beses na bayad · Walang subscription",
             "paywallUnlockPro": "I-unlock ang Pro",
             "paywallRestorePurchase": "I-restore ang purchase",
@@ -2326,7 +3806,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "ফাইল টাইপ অনুযায়ী ব্যাচ এক্সট্র্যাক্ট",
             "paywallFeatureRiskDetection": "এক্সট্র্যাক্টের আগে ঝুঁকিপূর্ণ ফাইল শনাক্তকরণ",
             "paywallLifetimePro": "লাইফটাইম Pro",
-            "paywallLaunchPrice": "প্রারম্ভিক মূল্য: $7.99",
+            "paywallLaunchPrice": "প্রারম্ভিক মূল্য",
             "paywallOneTimePurchase": "একবারের ক্রয় · সাবস্ক্রিপশন নেই",
             "paywallUnlockPro": "Pro আনলক করুন",
             "paywallRestorePurchase": "ক্রয় পুনরুদ্ধার",
@@ -2350,7 +3830,7 @@ enum L10n {
             "paywallFeatureBatchExtract": "فائل قسم کے مطابق بیچ استخراج",
             "paywallFeatureRiskDetection": "استخراج سے پہلے خطرناک فائلوں کی شناخت",
             "paywallLifetimePro": "لائف ٹائم Pro",
-            "paywallLaunchPrice": "آغاز قیمت: $7.99",
+            "paywallLaunchPrice": "آغاز قیمت",
             "paywallOneTimePurchase": "ایک بار خریدیں · کوئی سبسکرپشن نہیں",
             "paywallUnlockPro": "Pro کھولیں",
             "paywallRestorePurchase": "خریداری بحال کریں",
@@ -2421,7 +3901,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Risikohinweise vor dem Extrahieren",
                 "paywallLifetimePro": "Lifetime Pro",
                 "paywallOneTimePurchase": "Einmalzahlung · Kein Abo",
-                "paywallLaunchPrice": "Einführungspreis: $7.99",
+                "paywallLaunchPrice": "Einführungspreis",
                 "paywallUnlockPro": "Pro freischalten",
                 "paywallRestorePurchase": "Kauf wiederherstellen",
                 "paywallContinueFree": "Kostenlos fortfahren",
@@ -2450,7 +3930,6 @@ enum L10n {
                 "settingsFree": "Kostenlos",
                 "settingsProActive": "PeekZip Pro aktiv",
                 "settingsUnlockPro": "Pro freischalten",
-                "settingsResetProForTesting": "Pro für Tests zurücksetzen",
                 "settingsDefaultExtractLocationPanelTitle": "Standard-Extraktionsort",
                 "settingsDefaultExtractLocationPanelMessage": "Wähle einen Standardordner für extrahierte Archive.",            ]),
             "es": merged([
@@ -2505,7 +3984,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Avisos de riesgo antes de extraer",
                 "paywallLifetimePro": "Pro de por vida",
                 "paywallOneTimePurchase": "Pago único · Sin suscripción",
-                "paywallLaunchPrice": "Precio de lanzamiento: $7.99",
+                "paywallLaunchPrice": "Precio de lanzamiento",
                 "paywallUnlockPro": "Desbloquear Pro",
                 "paywallRestorePurchase": "Restaurar compra",
                 "paywallContinueFree": "Continuar gratis",
@@ -2534,7 +4013,6 @@ enum L10n {
                 "settingsFree": "Gratis",
                 "settingsProActive": "PeekZip Pro activo",
                 "settingsUnlockPro": "Desbloquear Pro",
-                "settingsResetProForTesting": "Restablecer Pro para pruebas",
                 "settingsDefaultExtractLocationPanelTitle": "Ubicación de extracción predeterminada",
                 "settingsDefaultExtractLocationPanelMessage": "Elige una carpeta predeterminada para los archivos extraídos.",            ]),
             "fr": merged([
@@ -2589,7 +4067,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Avertissements avant extraction",
                 "paywallLifetimePro": "Pro à vie",
                 "paywallOneTimePurchase": "Paiement unique · Sans abonnement",
-                "paywallLaunchPrice": "Prix de lancement : $7.99",
+                "paywallLaunchPrice": "Prix de lancement",
                 "paywallUnlockPro": "Débloquer Pro",
                 "paywallRestorePurchase": "Restaurer l’achat",
                 "paywallContinueFree": "Continuer gratuitement",
@@ -2618,7 +4096,6 @@ enum L10n {
                 "settingsFree": "Gratuit",
                 "settingsProActive": "PeekZip Pro actif",
                 "settingsUnlockPro": "Déverrouiller Pro",
-                "settingsResetProForTesting": "Réinitialiser Pro pour les tests",
                 "settingsDefaultExtractLocationPanelTitle": "Emplacement d’extraction par défaut",
                 "settingsDefaultExtractLocationPanelMessage": "Choisissez un dossier par défaut pour les archives extraites.",            ]),
             "pt-BR": merged([
@@ -2673,7 +4150,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Avisos antes de extrair",
                 "paywallLifetimePro": "Pro vitalício",
                 "paywallOneTimePurchase": "Compra única · Sem assinatura",
-                "paywallLaunchPrice": "Preço de lançamento: $7.99",
+                "paywallLaunchPrice": "Preço de lançamento",
                 "paywallUnlockPro": "Desbloquear Pro",
                 "paywallRestorePurchase": "Restaurar compra",
                 "paywallContinueFree": "Continuar grátis",
@@ -2702,7 +4179,6 @@ enum L10n {
                 "settingsFree": "Grátis",
                 "settingsProActive": "PeekZip Pro ativo",
                 "settingsUnlockPro": "Desbloquear Pro",
-                "settingsResetProForTesting": "Redefinir Pro para testes",
                 "settingsDefaultExtractLocationPanelTitle": "Local padrão de extração",
                 "settingsDefaultExtractLocationPanelMessage": "Escolha uma pasta padrão para os arquivos extraídos.",            ]),
             "pt-PT": merged([
@@ -2757,7 +4233,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Avisos antes de extrair",
                 "paywallLifetimePro": "Pro vitalício",
                 "paywallOneTimePurchase": "Compra única · Sem subscrição",
-                "paywallLaunchPrice": "Preço de lançamento: $7.99",
+                "paywallLaunchPrice": "Preço de lançamento",
                 "paywallUnlockPro": "Desbloquear Pro",
                 "paywallRestorePurchase": "Restaurar compra",
                 "paywallContinueFree": "Continuar grátis",
@@ -2786,7 +4262,6 @@ enum L10n {
                 "settingsFree": "Grátis",
                 "settingsProActive": "PeekZip Pro ativo",
                 "settingsUnlockPro": "Desbloquear Pro",
-                "settingsResetProForTesting": "Repor Pro para testes",
                 "settingsDefaultExtractLocationPanelTitle": "Local padrão de extração",
                 "settingsDefaultExtractLocationPanelMessage": "Escolha uma pasta padrão para os arquivos extraídos.",            ]),
             "ru": merged([
@@ -2841,7 +4316,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Предупреждения о риске перед извлечением",
                 "paywallLifetimePro": "Pro навсегда",
                 "paywallOneTimePurchase": "Разовая покупка · Без подписки",
-                "paywallLaunchPrice": "Стартовая цена: $7.99",
+                "paywallLaunchPrice": "Стартовая цена",
                 "paywallUnlockPro": "Разблокировать Pro",
                 "paywallRestorePurchase": "Восстановить покупку",
                 "paywallContinueFree": "Продолжить бесплатно",
@@ -2870,7 +4345,6 @@ enum L10n {
                 "settingsFree": "Бесплатно",
                 "settingsProActive": "PeekZip Pro активен",
                 "settingsUnlockPro": "Разблокировать Pro",
-                "settingsResetProForTesting": "Сбросить Pro для теста",
                 "settingsDefaultExtractLocationPanelTitle": "Папка по умолчанию",
                 "settingsDefaultExtractLocationPanelMessage": "Выберите папку по умолчанию для извлечённых архивов.",
             ]),
@@ -2926,7 +4400,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Çıkarmadan önce risk uyarıları",
                 "paywallLifetimePro": "Ömür boyu Pro",
                 "paywallOneTimePurchase": "Tek seferlik ödeme · Abonelik yok",
-                "paywallLaunchPrice": "Çıkış fiyatı: $7.99",
+                "paywallLaunchPrice": "Çıkış fiyatı",
                 "paywallUnlockPro": "Pro’yu aç",
                 "paywallRestorePurchase": "Satın alımı geri yükle",
                 "paywallContinueFree": "Ücretsiz devam et",
@@ -2955,7 +4429,6 @@ enum L10n {
                 "settingsFree": "Ücretsiz",
                 "settingsProActive": "PeekZip Pro etkin",
                 "settingsUnlockPro": "Pro kilidini aç",
-                "settingsResetProForTesting": "Test için Pro’yu sıfırla",
                 "settingsDefaultExtractLocationPanelTitle": "Varsayılan çıkarma konumu",
                 "settingsDefaultExtractLocationPanelMessage": "Çıkarılan arşivler için varsayılan bir klasör seçin.",
             ]),
@@ -3011,7 +4484,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Avvisi di rischio prima dell’estrazione",
                 "paywallLifetimePro": "Pro a vita",
                 "paywallOneTimePurchase": "Acquisto una tantum · Nessun abbonamento",
-                "paywallLaunchPrice": "Prezzo lancio: $7.99",
+                "paywallLaunchPrice": "Prezzo lancio",
                 "paywallUnlockPro": "Sblocca Pro",
                 "paywallRestorePurchase": "Ripristina acquisto",
                 "paywallContinueFree": "Continua gratis",
@@ -3040,7 +4513,6 @@ enum L10n {
                 "settingsFree": "Gratis",
                 "settingsProActive": "PeekZip Pro attivo",
                 "settingsUnlockPro": "Sblocca Pro",
-                "settingsResetProForTesting": "Reimposta Pro per test",
                 "settingsDefaultExtractLocationPanelTitle": "Percorso predefinito di estrazione",
                 "settingsDefaultExtractLocationPanelMessage": "Scegli una cartella predefinita per gli archivi estratti.",
             ]),
@@ -3096,7 +4568,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Risicomeldingen vóór het uitpakken",
                 "paywallLifetimePro": "Levenslang Pro",
                 "paywallOneTimePurchase": "Eenmalige aankoop · Geen abonnement",
-                "paywallLaunchPrice": "Introductieprijs: $7.99",
+                "paywallLaunchPrice": "Introductieprijs",
                 "paywallUnlockPro": "Pro ontgrendelen",
                 "paywallRestorePurchase": "Aankoop herstellen",
                 "paywallContinueFree": "Gratis doorgaan",
@@ -3125,7 +4597,6 @@ enum L10n {
                 "settingsFree": "Gratis",
                 "settingsProActive": "PeekZip Pro actief",
                 "settingsUnlockPro": "Pro ontgrendelen",
-                "settingsResetProForTesting": "Pro resetten voor tests",
                 "settingsDefaultExtractLocationPanelTitle": "Standaard uitpaklocatie",
                 "settingsDefaultExtractLocationPanelMessage": "Kies een standaardmap voor uitgepakte archieven.",
             ]),
@@ -3181,7 +4652,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Ostrzeżenia przed wyodrębnianiem",
                 "paywallLifetimePro": "Dożywotnie Pro",
                 "paywallOneTimePurchase": "Jednorazowy zakup · Bez subskrypcji",
-                "paywallLaunchPrice": "Cena startowa: $7.99",
+                "paywallLaunchPrice": "Cena startowa",
                 "paywallUnlockPro": "Odblokuj Pro",
                 "paywallRestorePurchase": "Przywróć zakup",
                 "paywallContinueFree": "Kontynuuj za darmo",
@@ -3210,7 +4681,6 @@ enum L10n {
                 "settingsFree": "Darmowe",
                 "settingsProActive": "PeekZip Pro aktywne",
                 "settingsUnlockPro": "Odblokuj Pro",
-                "settingsResetProForTesting": "Zresetuj Pro do testów",
                 "settingsDefaultExtractLocationPanelTitle": "Domyślna lokalizacja wyodrębniania",
                 "settingsDefaultExtractLocationPanelMessage": "Wybierz domyślny folder dla wyodrębnionych archiwów.",
             ]),
@@ -3266,7 +4736,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Попередження перед витягуванням",
                 "paywallLifetimePro": "Pro назавжди",
                 "paywallOneTimePurchase": "Разова покупка · Без підписки",
-                "paywallLaunchPrice": "Стартова ціна: $7.99",
+                "paywallLaunchPrice": "Стартова ціна",
                 "paywallUnlockPro": "Розблокувати Pro",
                 "paywallRestorePurchase": "Відновити покупку",
                 "paywallContinueFree": "Продовжити безкоштовно",
@@ -3295,7 +4765,6 @@ enum L10n {
                 "settingsFree": "Безкоштовно",
                 "settingsProActive": "PeekZip Pro активний",
                 "settingsUnlockPro": "Розблокувати Pro",
-                "settingsResetProForTesting": "Скинути Pro для тесту",
                 "settingsDefaultExtractLocationPanelTitle": "Типове розташування витягування",
                 "settingsDefaultExtractLocationPanelMessage": "Виберіть типову папку для витягнутих архівів.",
             ]),
@@ -3351,7 +4820,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "هشدارهای ریسک پیش از استخراج",
                 "paywallLifetimePro": "Pro همیشگی",
                 "paywallOneTimePurchase": "پرداخت یک‌باره · بدون اشتراک",
-                "paywallLaunchPrice": "قیمت آغازین: $7.99",
+                "paywallLaunchPrice": "قیمت آغازین",
                 "paywallUnlockPro": "باز کردن Pro",
                 "paywallRestorePurchase": "بازیابی خرید",
                 "paywallContinueFree": "ادامه نسخه رایگان",
@@ -3380,7 +4849,6 @@ enum L10n {
                 "settingsFree": "رایگان",
                 "settingsProActive": "PeekZip Pro فعال است",
                 "settingsUnlockPro": "باز کردن قفل Pro",
-                "settingsResetProForTesting": "بازنشانی Pro برای آزمایش",
                 "settingsDefaultExtractLocationPanelTitle": "مکان پیش‌فرض استخراج",
                 "settingsDefaultExtractLocationPanelMessage": "یک پوشه پیش‌فرض برای آرشیوهای استخراج‌شده انتخاب کنید.",
             ]),
@@ -3436,7 +4904,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "Onyo la hatari kabla ya kutoa",
                 "paywallLifetimePro": "Pro ya maisha",
                 "paywallOneTimePurchase": "Malipo mara moja · Hakuna usajili",
-                "paywallLaunchPrice": "Bei ya uzinduzi: $7.99",
+                "paywallLaunchPrice": "Bei ya uzinduzi",
                 "paywallUnlockPro": "Fungua Pro",
                 "paywallRestorePurchase": "Rejesha ununuzi",
                 "paywallContinueFree": "Endelea bure",
@@ -3465,7 +4933,6 @@ enum L10n {
                 "settingsFree": "Bure",
                 "settingsProActive": "PeekZip Pro imewashwa",
                 "settingsUnlockPro": "Fungua Pro",
-                "settingsResetProForTesting": "Weka upya Pro kwa majaribio",
                 "settingsDefaultExtractLocationPanelTitle": "Mahali pa msingi pa kutoa",
                 "settingsDefaultExtractLocationPanelMessage": "Chagua folda ya msingi kwa kumbukumbu zilizoondolewa.",
             ]),
@@ -3521,7 +4988,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "பிரித்தெடுக்கும் முன் ஆபத்து அறிவிப்புகள்",
                 "paywallLifetimePro": "வாழ்நாள் Pro",
                 "paywallOneTimePurchase": "ஒருமுறை கட்டணம் · சந்தா இல்லை",
-                "paywallLaunchPrice": "தொடக்க விலை: $7.99",
+                "paywallLaunchPrice": "தொடக்க விலை",
                 "paywallUnlockPro": "Pro ஐ திறக்கவும்",
                 "paywallRestorePurchase": "வாங்குதலை மீட்டமை",
                 "paywallContinueFree": "இலவசமாகத் தொடரவும்",
@@ -3550,7 +5017,6 @@ enum L10n {
                 "settingsFree": "இலவசம்",
                 "settingsProActive": "PeekZip Pro செயல்படுத்தப்பட்டது",
                 "settingsUnlockPro": "Pro ஐ திற",
-                "settingsResetProForTesting": "சோதனைக்காக Pro ஐ மீட்டமை",
                 "settingsDefaultExtractLocationPanelTitle": "இயல்புநிலை பிரித்தெடுக்கும் இடம்",
                 "settingsDefaultExtractLocationPanelMessage": "பிரித்தெடுக்கப்பட்ட காப்பகங்களுக்கு ஒரு இயல்புநிலை கோப்புறையைத் தேர்ந்தெடுக்கவும்.",
             ]),
@@ -3606,7 +5072,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "వెలికి తీయడానికి ముందు రిస్క్ హెచ్చరికలు",
                 "paywallLifetimePro": "జీవితకాల Pro",
                 "paywallOneTimePurchase": "ఒకసారి కొనుగోలు · సబ్‌స్క్రిప్షన్ లేదు",
-                "paywallLaunchPrice": "ప్రారంభ ధర: $7.99",
+                "paywallLaunchPrice": "ప్రారంభ ధర",
                 "paywallUnlockPro": "Pro అన్లాక్ చేయండి",
                 "paywallRestorePurchase": "కొనుగోలు పునరుద్ధరించండి",
                 "paywallContinueFree": "ఉచితంగా కొనసాగండి",
@@ -3635,7 +5101,6 @@ enum L10n {
                 "settingsFree": "ఉచితం",
                 "settingsProActive": "PeekZip Pro సక్రియంగా ఉంది",
                 "settingsUnlockPro": "Pro ను అన్‌లాక్ చేయి",
-                "settingsResetProForTesting": "పరీక్ష కోసం Pro ని రీసెట్ చేయి",
                 "settingsDefaultExtractLocationPanelTitle": "డిఫాల్ట్ వెలికి తీసే స్థానం",
                 "settingsDefaultExtractLocationPanelMessage": "వెలికి తీసిన ఆర్కైవ్‌ల కోసం ఒక డిఫాల్ట్ ఫోల్డర్‌ను ఎంచుకోండి.",
             ]),
@@ -3691,7 +5156,7 @@ enum L10n {
                 "paywallFeatureRiskDetection": "काढण्यापूर्वी जोखीम सूचना",
                 "paywallLifetimePro": "आजीवन Pro",
                 "paywallOneTimePurchase": "एकदाच खरेदी · सबस्क्रिप्शन नाही",
-                "paywallLaunchPrice": "लॉन्च किंमत: $7.99",
+                "paywallLaunchPrice": "लॉन्च किंमत",
                 "paywallUnlockPro": "Pro अनलॉक करा",
                 "paywallRestorePurchase": "खरेदी पुनर्संचयित करा",
                 "paywallContinueFree": "मोफत सुरू ठेवा",
@@ -3720,9 +5185,247 @@ enum L10n {
                 "settingsFree": "मोफत",
                 "settingsProActive": "PeekZip Pro सक्रिय आहे",
                 "settingsUnlockPro": "Pro अनलॉक करा",
-                "settingsResetProForTesting": "चाचणीसाठी Pro रीसेट करा",
                 "settingsDefaultExtractLocationPanelTitle": "डीफॉल्ट काढण्याचे ठिकाण",
                 "settingsDefaultExtractLocationPanelMessage": "काढलेल्या आर्काइव्हसाठी डीफॉल्ट फोल्डर निवडा.",
+                "settingsLanguageTitle": "भाषा",
+                "settingsLanguageFollowSystem": "सिस्टमप्रमाणे",
+                "emptyHomeTitle": "काढण्यापूर्वी आर्काइव्हचा पूर्वावलोकन करा",
+                "emptyHomeSubtitle": "शोधा, पाहा आणि फक्त आवश्यक तेच काढा.",
+                "emptyPrimaryTitle": "सुरुवात करण्यासाठी आर्काइव्ह उघडा",
+                "emptyPrimarySubtitle": "फाइल निवडा किंवा आर्काइव्ह PeekZip मध्ये ओढा.",
+                "emptyFeaturesTitle": "तुम्ही काय करू शकता",
+                "emptyFeatureSearchTitle": "आर्काइव्हमध्ये शोधा",
+                "emptyFeatureSearchSubtitle": "नाव, एक्स्टेंशन किंवा मार्गाने फाइल शोधा",
+                "emptyFeatureBrowseTitle": "फाइल प्रकारानुसार ब्राउझ करा",
+                "emptyFeatureBrowseSubtitle": "प्रतिमा, दस्तऐवज, कोड आणि व्हिडिओ पटकन पहा",
+                "emptyFeatureExtractTitle": "फक्त आवश्यक तेच काढा",
+                "emptyFeatureExtractSubtitle": "पूर्ण आर्काइव्ह उघडण्याची गरज नाही",
+                "emptyFormatsTitle": "समर्थित स्वरूप",
+                "archiveEmptyOpenArchive": "आर्काइव्ह उघडा",
+                "archiveEmptyTrySampleArchive": "नमुना आर्काइव्ह वापरून पहा",
+                "archiveDropTitle": "आर्काइव्ह येथे ओढा",
+                "archiveDropSubtitle": "सामग्री तपासण्यासाठी सोडा",
+            ])
+            ,
+            "ja": merged([
+                "settingsLanguageTitle": "言語",
+                "settingsLanguageFollowSystem": "システムに合わせる",
+                "emptyHomeTitle": "解凍前にアーカイブを確認",
+                "emptyHomeSubtitle": "検索、確認して、必要なものだけを取り出せます。",
+                "emptyPrimaryTitle": "アーカイブを開いて開始",
+                "emptyPrimarySubtitle": "ファイルを選択するか、PeekZip にドラッグしてください。",
+                "emptyFeaturesTitle": "できること",
+                "emptyFeatureSearchTitle": "アーカイブ内を検索",
+                "emptyFeatureSearchSubtitle": "名前、拡張子、パスでファイルを探します",
+                "emptyFeatureBrowseTitle": "種類別に閲覧",
+                "emptyFeatureBrowseSubtitle": "画像、書類、コード、動画をすばやく確認",
+                "emptyFeatureExtractTitle": "必要なものだけを抽出",
+                "emptyFeatureExtractSubtitle": "アーカイブ全体を展開する必要はありません",
+                "emptyFormatsTitle": "対応形式",
+                "archiveEmptyOpenArchive": "アーカイブを開く",
+                "archiveEmptyTrySampleArchive": "サンプルを試す",
+                "archiveDropTitle": "ここにアーカイブをドラッグ",
+                "archiveDropSubtitle": "ドロップして内容を確認",
+            ]),
+            "ko": merged([
+                "settingsLanguageTitle": "언어",
+                "settingsLanguageFollowSystem": "시스템 설정 따르기",
+                "emptyHomeTitle": "압축 해제 전에 미리 보기",
+                "emptyHomeSubtitle": "검색하고 확인한 뒤 필요한 것만 추출하세요.",
+                "emptyPrimaryTitle": "압축 파일을 열어 시작",
+                "emptyPrimarySubtitle": "파일을 선택하거나 PeekZip으로 끌어오세요.",
+                "emptyFeaturesTitle": "할 수 있는 일",
+                "emptyFeatureSearchTitle": "압축 파일 안 검색",
+                "emptyFeatureSearchSubtitle": "이름, 확장자, 경로로 파일 찾기",
+                "emptyFeatureBrowseTitle": "파일 형식별 탐색",
+                "emptyFeatureBrowseSubtitle": "이미지, 문서, 코드, 비디오를 빠르게 확인",
+                "emptyFeatureExtractTitle": "필요한 파일만 추출",
+                "emptyFeatureExtractSubtitle": "전체 압축 파일을 풀 필요가 없습니다",
+                "emptyFormatsTitle": "지원 형식",
+                "archiveEmptyOpenArchive": "압축 파일 열기",
+                "archiveEmptyTrySampleArchive": "샘플 압축 파일 사용해 보기",
+                "archiveDropTitle": "여기로 압축 파일 끌어오기",
+                "archiveDropSubtitle": "놓아서 내용 확인",
+            ]),
+            "ar": merged([
+                "settingsLanguageTitle": "اللغة",
+                "settingsLanguageFollowSystem": "اتباع إعدادات النظام",
+                "emptyHomeTitle": "عاين الأرشيفات قبل الاستخراج",
+                "emptyHomeSubtitle": "ابحث واستعرض واستخرج فقط ما تحتاج إليه.",
+                "emptyPrimaryTitle": "افتح أرشيفًا للبدء",
+                "emptyPrimarySubtitle": "اختر ملفًا أو اسحب الأرشيف إلى PeekZip.",
+                "emptyFeaturesTitle": "ما الذي يمكنك فعله",
+                "emptyFeatureSearchTitle": "البحث داخل الأرشيفات",
+                "emptyFeatureSearchSubtitle": "اعثر على الملفات بالاسم أو الامتداد أو المسار",
+                "emptyFeatureBrowseTitle": "التصفح حسب نوع الملف",
+                "emptyFeatureBrowseSubtitle": "اعرض الصور والمستندات والكود والفيديو بسرعة",
+                "emptyFeatureExtractTitle": "استخرج فقط ما تحتاج إليه",
+                "emptyFeatureExtractSubtitle": "لا حاجة لفك ضغط الأرشيف بالكامل",
+                "emptyFormatsTitle": "الأنواع المدعومة",
+                "archiveEmptyOpenArchive": "فتح أرشيف",
+                "archiveEmptyTrySampleArchive": "تجربة أرشيف نموذجي",
+                "archiveDropTitle": "اسحب الأرشيف هنا",
+                "archiveDropSubtitle": "أفلته لفحص المحتوى",
+            ]),
+            "hi": merged([
+                "settingsLanguageTitle": "भाषा",
+                "settingsLanguageFollowSystem": "सिस्टम के अनुसार",
+                "emptyHomeTitle": "निकालने से पहले आर्काइव देखें",
+                "emptyHomeSubtitle": "खोजें, देखें और केवल ज़रूरी चीज़ें निकालें।",
+                "emptyPrimaryTitle": "शुरू करने के लिए आर्काइव खोलें",
+                "emptyPrimarySubtitle": "फ़ाइल चुनें या आर्काइव को PeekZip में खींचें।",
+                "emptyFeaturesTitle": "आप क्या कर सकते हैं",
+                "emptyFeatureSearchTitle": "आर्काइव के अंदर खोजें",
+                "emptyFeatureSearchSubtitle": "नाम, एक्सटेंशन या पथ से फ़ाइल ढूँढें",
+                "emptyFeatureBrowseTitle": "फ़ाइल प्रकार के अनुसार देखें",
+                "emptyFeatureBrowseSubtitle": "चित्र, दस्तावेज़, कोड और वीडियो जल्दी देखें",
+                "emptyFeatureExtractTitle": "केवल ज़रूरी फ़ाइलें निकालें",
+                "emptyFeatureExtractSubtitle": "पूरा आर्काइव अनज़िप करने की ज़रूरत नहीं",
+                "emptyFormatsTitle": "समर्थित प्रारूप",
+                "archiveEmptyOpenArchive": "आर्काइव खोलें",
+                "archiveEmptyTrySampleArchive": "नमूना आर्काइव आज़माएँ",
+                "archiveDropTitle": "आर्काइव यहाँ खींचें",
+                "archiveDropSubtitle": "सामग्री देखने के लिए छोड़ें",
+            ]),
+            "id": merged([
+                "settingsLanguageTitle": "Bahasa",
+                "settingsLanguageFollowSystem": "Ikuti Sistem",
+                "emptyHomeTitle": "Pratinjau arsip sebelum mengekstrak",
+                "emptyHomeSubtitle": "Cari, periksa, dan ekstrak hanya yang Anda butuhkan.",
+                "emptyPrimaryTitle": "Buka arsip untuk memulai",
+                "emptyPrimarySubtitle": "Pilih file atau seret arsip ke PeekZip.",
+                "emptyFeaturesTitle": "Yang dapat Anda lakukan",
+                "emptyFeatureSearchTitle": "Cari di dalam arsip",
+                "emptyFeatureSearchSubtitle": "Temukan file berdasarkan nama, ekstensi, atau jalur",
+                "emptyFeatureBrowseTitle": "Jelajahi menurut jenis file",
+                "emptyFeatureBrowseSubtitle": "Lihat gambar, dokumen, kode, dan video dengan cepat",
+                "emptyFeatureExtractTitle": "Ekstrak hanya yang Anda perlukan",
+                "emptyFeatureExtractSubtitle": "Tidak perlu membuka seluruh arsip",
+                "emptyFormatsTitle": "Format yang didukung",
+                "archiveEmptyOpenArchive": "Buka Arsip",
+                "archiveEmptyTrySampleArchive": "Coba Arsip Contoh",
+                "archiveDropTitle": "Seret arsip ke sini",
+                "archiveDropSubtitle": "Lepaskan untuk memeriksa isi",
+            ]),
+            "ms": merged([
+                "settingsLanguageTitle": "Bahasa",
+                "settingsLanguageFollowSystem": "Ikut Sistem",
+                "emptyHomeTitle": "Pratonton arkib sebelum mengekstrak",
+                "emptyHomeSubtitle": "Cari, periksa dan ekstrak hanya yang anda perlukan.",
+                "emptyPrimaryTitle": "Buka arkib untuk bermula",
+                "emptyPrimarySubtitle": "Pilih fail atau seret arkib ke PeekZip.",
+                "emptyFeaturesTitle": "Apa yang anda boleh lakukan",
+                "emptyFeatureSearchTitle": "Cari dalam arkib",
+                "emptyFeatureSearchSubtitle": "Cari fail mengikut nama, sambungan atau laluan",
+                "emptyFeatureBrowseTitle": "Semak mengikut jenis fail",
+                "emptyFeatureBrowseSubtitle": "Lihat imej, dokumen, kod dan video dengan cepat",
+                "emptyFeatureExtractTitle": "Ekstrak hanya yang diperlukan",
+                "emptyFeatureExtractSubtitle": "Tidak perlu membuka keseluruhan arkib",
+                "emptyFormatsTitle": "Format disokong",
+                "archiveEmptyOpenArchive": "Buka Arkib",
+                "archiveEmptyTrySampleArchive": "Cuba Arkib Contoh",
+                "archiveDropTitle": "Seret arkib ke sini",
+                "archiveDropSubtitle": "Lepaskan untuk memeriksa kandungan",
+            ]),
+            "vi": merged([
+                "settingsLanguageTitle": "Ngôn ngữ",
+                "settingsLanguageFollowSystem": "Theo hệ thống",
+                "emptyHomeTitle": "Xem trước tệp nén trước khi giải nén",
+                "emptyHomeSubtitle": "Tìm kiếm, kiểm tra và chỉ trích xuất những gì bạn cần.",
+                "emptyPrimaryTitle": "Mở tệp nén để bắt đầu",
+                "emptyPrimarySubtitle": "Chọn tệp hoặc kéo tệp nén vào PeekZip.",
+                "emptyFeaturesTitle": "Bạn có thể làm gì",
+                "emptyFeatureSearchTitle": "Tìm kiếm trong tệp nén",
+                "emptyFeatureSearchSubtitle": "Tìm tệp theo tên, phần mở rộng hoặc đường dẫn",
+                "emptyFeatureBrowseTitle": "Duyệt theo loại tệp",
+                "emptyFeatureBrowseSubtitle": "Xem nhanh ảnh, tài liệu, mã và video",
+                "emptyFeatureExtractTitle": "Chỉ trích xuất những gì bạn cần",
+                "emptyFeatureExtractSubtitle": "Không cần giải nén toàn bộ tệp nén",
+                "emptyFormatsTitle": "Định dạng được hỗ trợ",
+                "archiveEmptyOpenArchive": "Mở Tệp Nén",
+                "archiveEmptyTrySampleArchive": "Thử Tệp Mẫu",
+                "archiveDropTitle": "Kéo tệp nén vào đây",
+                "archiveDropSubtitle": "Thả để kiểm tra nội dung",
+            ]),
+            "th": merged([
+                "settingsLanguageTitle": "ภาษา",
+                "settingsLanguageFollowSystem": "ตามระบบ",
+                "emptyHomeTitle": "ดูตัวอย่างไฟล์บีบอัดก่อนแตกไฟล์",
+                "emptyHomeSubtitle": "ค้นหา ตรวจสอบ และแตกเฉพาะสิ่งที่คุณต้องการ",
+                "emptyPrimaryTitle": "เปิดไฟล์บีบอัดเพื่อเริ่มต้น",
+                "emptyPrimarySubtitle": "เลือกไฟล์ หรือลากไฟล์บีบอัดเข้า PeekZip",
+                "emptyFeaturesTitle": "สิ่งที่คุณทำได้",
+                "emptyFeatureSearchTitle": "ค้นหาภายในไฟล์บีบอัด",
+                "emptyFeatureSearchSubtitle": "ค้นหาไฟล์ตามชื่อ นามสกุล หรือเส้นทาง",
+                "emptyFeatureBrowseTitle": "เรียกดูตามประเภทไฟล์",
+                "emptyFeatureBrowseSubtitle": "ดูรูปภาพ เอกสาร โค้ด และวิดีโอได้อย่างรวดเร็ว",
+                "emptyFeatureExtractTitle": "แตกเฉพาะไฟล์ที่ต้องการ",
+                "emptyFeatureExtractSubtitle": "ไม่จำเป็นต้องแตกทั้งไฟล์บีบอัด",
+                "emptyFormatsTitle": "รูปแบบที่รองรับ",
+                "archiveEmptyOpenArchive": "เปิดไฟล์บีบอัด",
+                "archiveEmptyTrySampleArchive": "ลองไฟล์ตัวอย่าง",
+                "archiveDropTitle": "ลากไฟล์บีบอัดมาที่นี่",
+                "archiveDropSubtitle": "ปล่อยเพื่อดูเนื้อหา",
+            ]),
+            "fil": merged([
+                "settingsLanguageTitle": "Wika",
+                "settingsLanguageFollowSystem": "Sundin ang System",
+                "emptyHomeTitle": "I-preview ang mga archive bago i-extract",
+                "emptyHomeSubtitle": "Maghanap, suriin, at i-extract lamang ang kailangan mo.",
+                "emptyPrimaryTitle": "Magbukas ng archive para magsimula",
+                "emptyPrimarySubtitle": "Pumili ng file o i-drag ang archive sa PeekZip.",
+                "emptyFeaturesTitle": "Ano ang magagawa mo",
+                "emptyFeatureSearchTitle": "Maghanap sa loob ng mga archive",
+                "emptyFeatureSearchSubtitle": "Hanapin ang mga file ayon sa pangalan, extension, o path",
+                "emptyFeatureBrowseTitle": "Mag-browse ayon sa uri ng file",
+                "emptyFeatureBrowseSubtitle": "Tingnan agad ang mga larawan, dokumento, code at video",
+                "emptyFeatureExtractTitle": "I-extract lamang ang kailangan mo",
+                "emptyFeatureExtractSubtitle": "Hindi kailangang i-unpack ang buong archive",
+                "emptyFormatsTitle": "Mga suportadong format",
+                "archiveEmptyOpenArchive": "Buksan ang Archive",
+                "archiveEmptyTrySampleArchive": "Subukan ang Halimbawang Archive",
+                "archiveDropTitle": "I-drag ang archive dito",
+                "archiveDropSubtitle": "I-drop para suriin ang laman",
+            ]),
+            "bn": merged([
+                "settingsLanguageTitle": "ভাষা",
+                "settingsLanguageFollowSystem": "সিস্টেম অনুযায়ী",
+                "emptyHomeTitle": "এক্সট্র্যাক্ট করার আগে আর্কাইভ প্রিভিউ করুন",
+                "emptyHomeSubtitle": "খুঁজুন, দেখুন এবং শুধু প্রয়োজনীয় জিনিসই বের করুন।",
+                "emptyPrimaryTitle": "শুরু করতে আর্কাইভ খুলুন",
+                "emptyPrimarySubtitle": "একটি ফাইল বেছে নিন, বা আর্কাইভটি PeekZip-এ টেনে আনুন।",
+                "emptyFeaturesTitle": "আপনি কী করতে পারেন",
+                "emptyFeatureSearchTitle": "আর্কাইভের ভিতরে খোঁজ করুন",
+                "emptyFeatureSearchSubtitle": "নাম, এক্সটেনশন বা পাথ দিয়ে ফাইল খুঁজুন",
+                "emptyFeatureBrowseTitle": "ফাইলের ধরন অনুযায়ী ব্রাউজ করুন",
+                "emptyFeatureBrowseSubtitle": "ছবি, ডকুমেন্ট, কোড ও ভিডিও দ্রুত দেখুন",
+                "emptyFeatureExtractTitle": "শুধু প্রয়োজনীয় ফাইল বের করুন",
+                "emptyFeatureExtractSubtitle": "পুরো আর্কাইভ আনজিপ করার দরকার নেই",
+                "emptyFormatsTitle": "সমর্থিত ফরম্যাট",
+                "archiveEmptyOpenArchive": "আর্কাইভ খুলুন",
+                "archiveEmptyTrySampleArchive": "নমুনা আর্কাইভ চেষ্টা করুন",
+                "archiveDropTitle": "এখানে আর্কাইভ টেনে আনুন",
+                "archiveDropSubtitle": "কনটেন্ট দেখতে ছেড়ে দিন",
+            ]),
+            "ur": merged([
+                "settingsLanguageTitle": "زبان",
+                "settingsLanguageFollowSystem": "سسٹم کے مطابق",
+                "emptyHomeTitle": "نکالنے سے پہلے آرکائیو کا پیش منظر دیکھیں",
+                "emptyHomeSubtitle": "تلاش کریں، دیکھیں اور صرف وہی نکالیں جس کی ضرورت ہو۔",
+                "emptyPrimaryTitle": "شروع کرنے کے لیے آرکائیو کھولیں",
+                "emptyPrimarySubtitle": "فائل منتخب کریں یا آرکائیو کو PeekZip میں گھسیٹیں۔",
+                "emptyFeaturesTitle": "آپ کیا کر سکتے ہیں",
+                "emptyFeatureSearchTitle": "آرکائیو کے اندر تلاش",
+                "emptyFeatureSearchSubtitle": "نام، ایکسٹینشن یا راستے سے فائل تلاش کریں",
+                "emptyFeatureBrowseTitle": "فائل کی قسم کے مطابق براؤز کریں",
+                "emptyFeatureBrowseSubtitle": "تصاویر، دستاویزات، کوڈ اور ویڈیو تیزی سے دیکھیں",
+                "emptyFeatureExtractTitle": "صرف ضروری فائلیں نکالیں",
+                "emptyFeatureExtractSubtitle": "پورا آرکائیو کھولنے کی ضرورت نہیں",
+                "emptyFormatsTitle": "معاون فارمیٹس",
+                "archiveEmptyOpenArchive": "آرکائیو کھولیں",
+                "archiveEmptyTrySampleArchive": "نمونہ آرکائیو آزمائیں",
+                "archiveDropTitle": "آرکائیو یہاں گھسیٹیں",
+                "archiveDropSubtitle": "مواد دیکھنے کے لیے چھوڑیں",
             ])
         ]
     }()

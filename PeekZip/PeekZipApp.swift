@@ -21,6 +21,7 @@ final class PeekZipAppDelegate: NSObject, NSApplicationDelegate {
         if let icon = NSImage(named: "AppIcon") {
             NSApp.applicationIconImage = icon
         }
+        PurchaseManager.shared.configureIfNeeded()
         hideWindowTitles()
     }
 

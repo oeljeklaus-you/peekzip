@@ -161,16 +161,16 @@ enum ArchiveFileKind: String, Sendable {
 
     var title: String {
         switch self {
-        case .folder: return "Folder"
-        case .image: return "Image"
-        case .document: return "Document"
-        case .code: return "Code"
-        case .video: return "Video"
-        case .largeFile: return "Large File"
-        case .archive: return "Archive"
-        case .text: return "Text"
-        case .other: return "File"
-        case .executable: return "Executable"
+        case .folder: return L10n.string(.archiveKindFolder)
+        case .image: return L10n.string(.archiveKindImage)
+        case .document: return L10n.string(.archiveKindDocument)
+        case .code: return L10n.string(.archiveKindCode)
+        case .video: return L10n.string(.archiveKindVideo)
+        case .largeFile: return L10n.string(.archiveKindLargeFile)
+        case .archive: return L10n.string(.archiveKindArchive)
+        case .text: return L10n.string(.archiveKindText)
+        case .other: return L10n.string(.archiveKindFile)
+        case .executable: return L10n.string(.archiveKindExecutable)
         }
     }
 
@@ -250,7 +250,16 @@ extension ArchiveEntry {
     }
 
     var formattedCompressionMethod: String {
-        method ?? "—"
+        guard let method else { return "—" }
+
+        switch method.lowercased() {
+        case "deflate":
+            return L10n.string(.archiveCompressionDeflate)
+        case "stored":
+            return L10n.string(.archiveCompressionStored)
+        default:
+            return method
+        }
     }
 
     var formattedCompressedSize: String {

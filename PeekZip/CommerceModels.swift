@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import StoreKit
 import SwiftUI
 
 typealias ArchiveRiskLevel = RiskLevel
@@ -42,31 +43,213 @@ final class LicenseManager: ObservableObject {
         self.proUnlockedAt = defaults.object(forKey: Keys.proUnlockedAt) as? Date
     }
 
-    func unlockProForTesting() {
-        isProUnlocked = true
-        proUnlockedAt = Date()
-    }
-
-    func resetProForTesting() {
-        isProUnlocked = false
-        proUnlockedAt = nil
-    }
-
     func requirePro(feature: ProFeature) -> Bool {
         switch feature {
         case .multiArchiveSearch, .fullLargeArchiveIndex, .passwordArchive, .batchExtractByType, .riskFileDetection:
             return isPro
         }
     }
+
+    func applyStoreEntitlement(isUnlocked: Bool, unlockedAt: Date?) {
+        isProUnlocked = isUnlocked
+        proUnlockedAt = isUnlocked ? unlockedAt : nil
+    }
+}
+
+@MainActor
+final class PurchaseManager: ObservableObject {
+    static let shared = PurchaseManager()
+
+    enum PurchaseOutcome {
+        case success
+        case pending
+        case cancelled
+    }
+
+    enum PurchaseError: LocalizedError {
+        case productUnavailable
+        case verificationFailed
+
+        var errorDescription: String? {
+            switch self {
+            case .productUnavailable:
+                return L10n.string(.paywallPurchaseUnavailable)
+            case .verificationFailed:
+                return L10n.string(.paywallPurchaseFailed)
+            }
+        }
+    }
+
+    private let productID = "com.youyujie.peekzip.pro"
+    private var updatesTask: Task<Void, Never>?
+    private var didConfigure = false
+
+    @Published private(set) var proProduct: Product?
+    @Published private(set) var didFinishProductLoad = false
+
+    private init() { }
+
+    deinit {
+        updatesTask?.cancel()
+    }
+
+    func configureIfNeeded() {
+        guard !didConfigure else { return }
+        didConfigure = true
+        AppEventLogger.iap("transaction listener started")
+
+        updatesTask = Task { [weak self] in
+            guard let self else { return }
+
+            for await update in Transaction.updates {
+                do {
+                    let transaction = try self.checkVerified(update)
+                    AppEventLogger.iap("transaction update received: \(transaction.productID)")
+                    if transaction.productID == self.productID {
+                        await self.refreshEntitlements()
+                    }
+                    await transaction.finish()
+                    AppEventLogger.iap("transaction finished")
+                } catch {
+                    AppEventLogger.iap("transaction update verification failed: \(error.localizedDescription)")
+                    AppEventLogger.log("storekit_transaction_verification_failed")
+                }
+            }
+        }
+
+        Task {
+            await loadProducts()
+            await refreshEntitlements()
+        }
+    }
+
+    func loadProducts() async {
+        AppEventLogger.iap("loading products: \(productID)")
+        do {
+            let products = try await Product.products(for: [productID])
+            AppEventLogger.iap("loaded products count: \(products.count)")
+            for product in products {
+                AppEventLogger.iap("product loaded: id=\(product.id), name=\(product.displayName), price=\(product.displayPrice)")
+            }
+            proProduct = products.first
+            didFinishProductLoad = true
+            if proProduct == nil {
+                AppEventLogger.iap("product not found for id: \(productID)")
+            }
+        } catch {
+            didFinishProductLoad = true
+            AppEventLogger.iap("product load failed: \(error.localizedDescription)")
+            AppEventLogger.log("storekit_products_failed", metadata: ["error": error.localizedDescription])
+        }
+    }
+
+    func purchasePro() async throws -> PurchaseOutcome {
+        if proProduct == nil {
+            await loadProducts()
+        }
+
+        guard let product = proProduct else {
+            AppEventLogger.iap("purchase failed: product not found")
+            throw PurchaseError.productUnavailable
+        }
+
+        AppEventLogger.iap("purchase started")
+
+        do {
+            let result = try await product.purchase()
+            switch result {
+            case .success(let verification):
+                AppEventLogger.iap("purchase result: success")
+                let transaction = try checkVerified(verification)
+                AppEventLogger.iap("verified transaction product id: \(transaction.productID)")
+                if transaction.productID == productID {
+                    await refreshEntitlements()
+                }
+                await transaction.finish()
+                AppEventLogger.iap("transaction finished")
+                return .success
+            case .pending:
+                AppEventLogger.iap("purchase result: pending")
+                return .pending
+            case .userCancelled:
+                AppEventLogger.iap("purchase result: userCancelled")
+                return .cancelled
+            @unknown default:
+                AppEventLogger.iap("purchase result: unknown")
+                return .cancelled
+            }
+        } catch {
+            AppEventLogger.iap("purchase failed: \(error.localizedDescription)")
+            throw error
+        }
+    }
+
+    func restorePurchases() async throws -> Bool {
+        AppEventLogger.iap("AppStore.sync started")
+        do {
+            try await AppStore.sync()
+            AppEventLogger.iap("AppStore.sync finished")
+            let restored = await refreshEntitlements()
+            AppEventLogger.iap(restored ? "restore result: restored" : "restore result: nothing found")
+            return restored
+        } catch {
+            AppEventLogger.iap("restore failed: \(error.localizedDescription)")
+            throw error
+        }
+    }
+
+    @discardableResult
+    func refreshEntitlements() async -> Bool {
+        var unlockedAt: Date?
+
+        for await entitlement in Transaction.currentEntitlements {
+            do {
+                let transaction = try checkVerified(entitlement)
+                AppEventLogger.iap("current entitlement: \(transaction.productID)")
+                guard transaction.productID == productID else { continue }
+                guard transaction.revocationDate == nil else { continue }
+
+                if let current = unlockedAt {
+                    unlockedAt = max(current, transaction.purchaseDate)
+                } else {
+                    unlockedAt = transaction.purchaseDate
+                }
+            } catch {
+                AppEventLogger.iap("entitlement verification failed: \(error.localizedDescription)")
+            }
+        }
+
+        let isUnlocked = unlockedAt != nil
+        LicenseManager.shared.applyStoreEntitlement(isUnlocked: isUnlocked, unlockedAt: unlockedAt)
+        AppEventLogger.iap("entitlement refresh result: isPro=\(isUnlocked)")
+        return isUnlocked
+    }
+
+    private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
+        switch result {
+        case .verified(let value):
+            return value
+        case .unverified:
+            throw PurchaseError.verificationFailed
+        }
+    }
 }
 
 enum AppEventLogger {
     static func log(_ name: String, metadata: [String: String] = [:]) {
+#if DEBUG
         if metadata.isEmpty {
             print("[PeekZip] event: \(name)")
         } else {
             print("[PeekZip] event: \(name) \(metadata)")
         }
+#endif
+    }
+
+    static func iap(_ message: String) {
+#if DEBUG
+        print("[PeekZip][IAP] \(message)")
+#endif
     }
 }
 
@@ -145,13 +328,7 @@ enum ArchiveBatchType: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 
     var title: String {
-        switch self {
-        case .images: return "Images"
-        case .pdfs: return "PDFs"
-        case .videos: return "Videos"
-        case .documents: return "Documents"
-        case .code: return "Code Files"
-        }
+        L10n.batchTypeTitle(self)
     }
 
     var extensions: Set<String> {
@@ -205,6 +382,7 @@ final class AppPreferences: ObservableObject {
         static let keepFolderStructure = "PeekZip.pref.keepFolderStructure"
         static let skipJunkFilesOnExtract = "PeekZip.pref.skipJunkFilesOnExtract"
         static let defaultExtractLocation = "PeekZip.pref.defaultExtractLocation"
+        static let languageCode = "PeekZip.pref.languageCode"
     }
 
     @Published var revealAfterExtract: Bool {
@@ -223,12 +401,23 @@ final class AppPreferences: ObservableObject {
         didSet { UserDefaults.standard.set(defaultExtractLocationPath, forKey: Keys.defaultExtractLocation) }
     }
 
+    @Published var selectedLanguageCode: String? {
+        didSet {
+            if let selectedLanguageCode {
+                UserDefaults.standard.set(selectedLanguageCode, forKey: Keys.languageCode)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Keys.languageCode)
+            }
+        }
+    }
+
     private init() {
         let defaults = UserDefaults.standard
         self.revealAfterExtract = defaults.object(forKey: Keys.revealAfterExtract) as? Bool ?? true
         self.keepFolderStructure = defaults.object(forKey: Keys.keepFolderStructure) as? Bool ?? true
         self.skipJunkFilesOnExtract = defaults.object(forKey: Keys.skipJunkFilesOnExtract) as? Bool ?? true
         self.defaultExtractLocationPath = defaults.string(forKey: Keys.defaultExtractLocation)
+        self.selectedLanguageCode = defaults.string(forKey: Keys.languageCode)
     }
 
     var defaultExtractLocationURL: URL? {

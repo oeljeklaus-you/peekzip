@@ -3,84 +3,72 @@ import SwiftUI
 
 struct ProPaywallView: View {
     let state: ProPaywallState
-    let onUnlock: () -> Void
-    let onRestorePurchase: () -> Void
+    let onUnlock: () async -> Void
+    let onRestorePurchase: () async -> Void
     let onContinueFree: () -> Void
+    @ObservedObject private var purchaseManager = PurchaseManager.shared
     @State private var isPurchasing = false
     @State private var isRestoring = false
 
     var body: some View {
-        GeometryReader { proxy in
-            let width = min(600, max(480, proxy.size.width * 0.82))
-            let height = min(680, max(520, proxy.size.height * 0.86))
-            let priceParts = L10n.paywallPriceParts
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color(nsColor: .windowBackgroundColor).opacity(0.98))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.10), radius: 22, x: 0, y: 14)
 
-            ZStack(alignment: .topTrailing) {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(.regularMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.08), radius: 18, x: 0, y: 10)
-
-                VStack(spacing: 0) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        header
-                    }
-                    .padding(.horizontal, 28)
-                    .padding(.top, 28)
-
-                    ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 0) {
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(alignment: .leading, spacing: 14) {
                         VStack(alignment: .leading, spacing: 18) {
-                            contextCallout
-                            featureList
+                            header
+                            highlightPill
                         }
-                        .padding(.horizontal, 28)
-                        .padding(.top, 18)
-                        .padding(.bottom, 18)
+
+                        featureList
+                        pricingCardSection
                     }
-                    .frame(maxHeight: .infinity, alignment: .top)
-
-                    pricingCard(priceParts: priceParts)
-                        .padding(.horizontal, 28)
-                        .padding(.top, 6)
-                        .padding(.bottom, 16)
-
-                    Divider()
-                        .padding(.horizontal, 28)
-
-                    buttonBar
-                        .padding(.horizontal, 28)
-                        .padding(.top, 14)
-                        .padding(.bottom, 22)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 30)
+                    .padding(.bottom, 24)
                 }
-                .frame(width: width, height: height, alignment: .topLeading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
-                closeButton
-                    .padding(.top, 14)
-                    .padding(.trailing, 14)
+                Divider()
+
+                actionFooter
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 18)
+                    .background(.regularMaterial)
             }
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .center)
+
+            closeButton
+                .padding(.top, 14)
+                .padding(.trailing, 14)
+                .zIndex(1)
         }
-        .frame(minWidth: 480, minHeight: 520)
+        .frame(minWidth: 720, idealWidth: 780, maxWidth: 860)
+        .frame(minHeight: 620, idealHeight: 760, maxHeight: 860)
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 14) {
-            AppIconView(size: 44)
+        HStack(alignment: .top, spacing: 16) {
+            AppIconView(size: 52)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(L10n.string(.paywallTitle))
-                    .font(.system(size: 27, weight: .semibold, design: .rounded))
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(L10n.string(.paywallSubtitle))
-                    .font(.system(size: 14.5))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .font(.system(size: 15.5, weight: .medium))
+                    .foregroundStyle(Color.secondary.opacity(0.92))
+                    .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -88,82 +76,111 @@ struct ProPaywallView: View {
         }
     }
 
-    private var contextCallout: some View {
+    private var highlightPill: some View {
         let highlight = L10n.highlight(for: state.feature)
 
-        return HStack(alignment: .top, spacing: 10) {
-            Image(systemName: paywallContextSymbol)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.accentColor.opacity(0.88))
+        return HStack(alignment: .center, spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.10))
+
+                Image(systemName: paywallContextSymbol)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.accentColor.opacity(0.92))
+            }
+            .frame(width: 28, height: 28)
 
             Text(highlight.isEmpty ? L10n.string(.paywallSubtitle) : highlight)
-                .font(.system(size: 13.5, weight: .medium))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.primary.opacity(0.86))
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.44), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.64), in: Capsule(style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            Capsule(style: .continuous)
                 .stroke(Color.primary.opacity(0.06), lineWidth: 1)
         )
     }
 
     private var featureList: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(L10n.featureRows, id: \.self) { row in
+            ForEach(displayFeatureRows, id: \.self) { row in
                 featureRow(row)
             }
         }
     }
 
+    private var displayFeatureRows: [L10n.PaywallFeatureRow] {
+        let hiddenTitle: String
+        switch state.feature {
+        case .fullLargeArchiveIndex:
+            hiddenTitle = L10n.string(.paywallFeatureFullIndexing)
+        case .multiArchiveSearch:
+            hiddenTitle = L10n.string(.paywallFeatureMultiArchiveSearch)
+        case .passwordArchive:
+            hiddenTitle = L10n.string(.paywallFeaturePasswordSupport)
+        case .batchExtractByType:
+            hiddenTitle = L10n.string(.paywallFeatureBatchExtract)
+        case .riskFileDetection:
+            hiddenTitle = L10n.string(.paywallFeatureRiskDetection)
+        }
+        return L10n.featureRows.filter { $0.title != hiddenTitle }
+    }
+
     private func featureRow(_ row: L10n.PaywallFeatureRow) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .center, spacing: 12) {
             ZStack {
-                Circle()
-                    .fill(Color.accentColor.opacity(0.12))
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.10))
 
                 Image(systemName: row.iconName)
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundStyle(Color.accentColor.opacity(0.88))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.accentColor.opacity(0.92))
             }
-            .frame(width: 22, height: 22)
+            .frame(width: 38, height: 38)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(row.title)
-                    .font(.system(size: 14.5, weight: .semibold))
+                    .font(.system(size: 15.5, weight: .semibold))
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(row.subtitle)
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.secondary.opacity(0.88))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(Color.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+        )
     }
 
-    private func pricingCard(priceParts: (badge: String, price: String)) -> some View {
+    private func pricingCard(priceLabel: String, priceValue: String) -> some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(L10n.string(.paywallLifetimePro))
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
 
                 Text(L10n.string(.paywallOneTimePurchase))
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.secondary.opacity(0.90))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -171,141 +188,111 @@ struct ProPaywallView: View {
             Spacer(minLength: 0)
 
             VStack(alignment: .trailing, spacing: 2) {
-                if !priceParts.price.isEmpty {
-                    Text(priceParts.price)
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                } else {
-                    Text(priceParts.badge)
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
+                Text(priceValue)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
-                if !priceParts.badge.isEmpty && !priceParts.price.isEmpty {
-                    Text(priceParts.badge)
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                }
+                Text(priceLabel)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(Color.secondary.opacity(0.88))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
         }
-        .padding(18)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
         .layoutPriority(2)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.82), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.primary.opacity(0.06), lineWidth: 1)
         )
     }
 
-    private var buttonBar: some View {
+    private var pricingCardSection: some View {
+        pricingCard(priceLabel: L10n.paywallPriceBadge, priceValue: displayPrice)
+    }
+
+    private var displayPrice: String {
+        if let price = purchaseManager.proProduct?.displayPrice {
+            return price
+        }
+        return purchaseManager.didFinishProductLoad ? "Product not found" : L10n.string(.paywallPriceLoading)
+    }
+
+    private var actionFooter: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: 10) {
-                Button {
-                    beginRestorePurchase()
-                } label: {
-                    if isRestoring {
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .controlSize(.mini)
-                            Text(L10n.string(.paywallRestoring))
-                        }
-                    } else {
-                        Text(L10n.string(.paywallRestorePurchase))
-                    }
-                }
-                .buttonStyle(PaywallTextButtonStyle())
-                .focusable(false)
-                .disabled(isBusy)
-
-                Spacer(minLength: 16)
-
-                Button {
-                    onContinueFree()
-                } label: {
-                    Text(L10n.string(.paywallContinueFree))
-                }
-                .buttonStyle(PaywallSecondaryButtonStyle())
-                .focusable(false)
-                .disabled(isBusy)
-
-                Button {
-                    beginPurchase()
-                } label: {
-                    if isPurchasing {
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .controlSize(.mini)
-                            Text(L10n.string(.paywallUnlocking))
-                        }
-                    } else {
-                        Label(L10n.string(.paywallUnlockPro), systemImage: "sparkles")
-                    }
-                }
-                .buttonStyle(PaywallPrimaryPurchaseButtonStyle())
-                .focusable(false)
-                .disabled(isBusy)
+            HStack(spacing: 12) {
+                restorePurchaseButton
+                Spacer(minLength: 0)
+                continueFreeButton
+                unlockProButton
             }
+            .frame(maxWidth: .infinity)
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Button {
-                        beginRestorePurchase()
-                    } label: {
-                        if isRestoring {
-                            HStack(spacing: 6) {
-                                ProgressView()
-                                    .controlSize(.mini)
-                                Text(L10n.string(.paywallRestoring))
-                            }
-                        } else {
-                            Text(L10n.string(.paywallRestorePurchase))
-                        }
-                    }
-                    .buttonStyle(PaywallTextButtonStyle())
-                    .focusable(false)
-                    .disabled(isBusy)
-
-                    Spacer(minLength: 0)
-                }
+            VStack(spacing: 10) {
+                unlockProButton
 
                 HStack(spacing: 10) {
-                    Button {
-                        onContinueFree()
-                    } label: {
-                        Text(L10n.string(.paywallContinueFree))
-                    }
-                    .buttonStyle(PaywallSecondaryButtonStyle())
-                    .focusable(false)
-                    .disabled(isBusy)
-
-                    Button {
-                        beginPurchase()
-                    } label: {
-                        if isPurchasing {
-                            HStack(spacing: 6) {
-                                ProgressView()
-                                    .controlSize(.mini)
-                                Text(L10n.string(.paywallUnlocking))
-                            }
-                        } else {
-                            Label(L10n.string(.paywallUnlockPro), systemImage: "sparkles")
-                        }
-                    }
-                    .buttonStyle(PaywallPrimaryPurchaseButtonStyle())
-                    .focusable(false)
-                    .disabled(isBusy)
+                    restorePurchaseButton
+                    continueFreeButton
                 }
             }
         }
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var continueFreeButton: some View {
+        Button {
+            onContinueFree()
+        } label: {
+            Text(L10n.string(.paywallContinueFree))
+        }
+        .buttonStyle(PaywallSecondaryButtonStyle())
+        .focusable(false)
+        .disabled(isBusy)
+    }
+
+    private var restorePurchaseButton: some View {
+        Button {
+            beginRestorePurchase()
+        } label: {
+            if isRestoring {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.mini)
+                    Text(L10n.string(.paywallRestoring))
+                }
+            } else {
+                Text(L10n.string(.paywallRestorePurchase))
+            }
+        }
+        .buttonStyle(PaywallAuxiliaryButtonStyle())
+        .focusable(false)
+        .disabled(isBusy)
+    }
+
+    private var unlockProButton: some View {
+        Button {
+            beginPurchase()
+        } label: {
+            if isPurchasing {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.mini)
+                    Text(L10n.string(.paywallUnlocking))
+                }
+            } else {
+                Label(L10n.string(.paywallUnlockPro), systemImage: "sparkles")
+            }
+        }
+        .buttonStyle(PaywallPrimaryPurchaseButtonStyle())
+        .focusable(false)
+        .disabled(isBusy)
     }
 
     private var isBusy: Bool {
@@ -313,15 +300,29 @@ struct ProPaywallView: View {
     }
 
     private func beginPurchase() {
-        guard !isBusy else { return }
-        isPurchasing = true
-        onUnlock()
+        AppEventLogger.iap("unlock button tapped")
+        guard !isBusy else {
+            AppEventLogger.iap("unlock tap ignored: busy")
+            return
+        }
+        Task { @MainActor in
+            isPurchasing = true
+            defer { isPurchasing = false }
+            await onUnlock()
+        }
     }
 
     private func beginRestorePurchase() {
-        guard !isBusy else { return }
-        isRestoring = true
-        onRestorePurchase()
+        AppEventLogger.iap("restore tapped")
+        guard !isBusy else {
+            AppEventLogger.iap("restore tap ignored: busy")
+            return
+        }
+        Task { @MainActor in
+            isRestoring = true
+            defer { isRestoring = false }
+            await onRestorePurchase()
+        }
     }
 
     private var closeButton: some View {
@@ -330,12 +331,12 @@ struct ProPaywallView: View {
         } label: {
             ZStack {
                 Circle()
-                    .fill(Color(nsColor: .controlBackgroundColor).opacity(0.75))
+                    .fill(Color(nsColor: .controlBackgroundColor).opacity(0.92))
                 Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
-            .frame(width: 36, height: 36)
+            .frame(width: 40, height: 40)
         }
         .buttonStyle(.plain)
         .focusable(false)
@@ -454,10 +455,36 @@ struct BatchExtractCustomTypesView: View {
 struct SettingsView: View {
     @ObservedObject private var preferences = AppPreferences.shared
     @ObservedObject private var license = LicenseManager.shared
+    private let systemLanguageTag = "system"
 
     var body: some View {
         Form {
             Section(L10n.string(.settingsGeneralTitle)) {
+                Picker(
+                    L10n.string(.settingsLanguageTitle),
+                    selection: Binding(
+                        get: {
+                            if let selectedLanguageCode = preferences.selectedLanguageCode,
+                               L10n.supportedLocaleCodes.contains(selectedLanguageCode) {
+                                return selectedLanguageCode
+                            }
+                            return systemLanguageTag
+                        },
+                        set: { newValue in
+                            preferences.selectedLanguageCode = newValue == systemLanguageTag ? nil : newValue
+                        }
+                    )
+                ) {
+                    Text(L10n.string(.settingsLanguageFollowSystem))
+                        .tag(systemLanguageTag)
+
+                    ForEach(L10n.supportedLocaleCodes, id: \.self) { localeCode in
+                        Text(L10n.displayName(for: localeCode))
+                            .tag(localeCode)
+                    }
+                }
+                .pickerStyle(.menu)
+
                 Toggle(L10n.string(.settingsRevealAfterExtract), isOn: $preferences.revealAfterExtract)
                 Toggle(L10n.string(.settingsKeepFolderStructure), isOn: $preferences.keepFolderStructure)
                 Toggle(L10n.string(.settingsSkipJunkFilesOnExtract), isOn: $preferences.skipJunkFilesOnExtract)
@@ -486,18 +513,11 @@ struct SettingsView: View {
                     Text(license.isPro ? L10n.string(.settingsProActive) : L10n.string(.settingsFree))
                         .foregroundStyle(.secondary)
                 }
-
-                Button(license.isPro ? L10n.string(.settingsProActive) : L10n.string(.settingsUnlockPro)) {
-                    if license.isPro {
-                        return
-                    }
-                    license.unlockProForTesting()
-                }
             }
         }
         .formStyle(.grouped)
         .padding(20)
-        .frame(width: 520, height: 420)
+        .frame(width: 520, height: 460)
     }
 
     private func chooseDefaultLocation() {

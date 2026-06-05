@@ -4,6 +4,11 @@ struct ToolbarPrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
+        let fillColor: Color = isEnabled
+            ? Color.accentColor.opacity(configuration.isPressed ? 0.88 : 1.0)
+            : Color(nsColor: .controlBackgroundColor).opacity(0.82)
+        let foreground: Color = isEnabled ? .white : .secondary
+
         configuration.label
             .font(.system(size: 13, weight: .semibold))
             .lineLimit(1)
@@ -11,12 +16,16 @@ struct ToolbarPrimaryButtonStyle: ButtonStyle {
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
             .frame(minWidth: 72, minHeight: 30)
-            .foregroundStyle(.white)
+            .foregroundStyle(foreground)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.accentColor.opacity(configuration.isPressed ? 0.88 : 1.0))
+                    .fill(fillColor)
             )
-            .opacity(isEnabled ? 1.0 : 0.45)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.secondary.opacity(isEnabled ? 0.0 : 0.12), lineWidth: 1)
+            )
+            .opacity(isEnabled ? 1.0 : 0.92)
             .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
     }
 }
@@ -102,9 +111,11 @@ struct PrimaryActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13, weight: .semibold))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .frame(minHeight: 30)
+            .lineLimit(1)
+            .minimumScaleFactor(0.9)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .frame(minHeight: 42)
             .foregroundStyle(.white)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -122,13 +133,19 @@ struct SecondaryActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13, weight: .medium))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .frame(minHeight: 30)
+            .lineLimit(1)
+            .minimumScaleFactor(0.9)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .frame(minHeight: 42)
             .foregroundStyle(.primary)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(Color(nsColor: .controlBackgroundColor).opacity(configuration.isPressed ? 0.72 : 0.28))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
             )
             .opacity(isEnabled ? 1.0 : 0.55)
             .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
@@ -170,24 +187,28 @@ struct SubtleUpgradeButtonStyle: ButtonStyle {
     }
 }
 
-struct PaywallTextButtonStyle: ButtonStyle {
+struct PaywallAuxiliaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .lineLimit(1)
             .minimumScaleFactor(0.85)
-            .font(.system(size: 13, weight: .medium))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .frame(minHeight: 34)
-            .foregroundStyle(configuration.isPressed ? .primary : .secondary)
+            .font(.system(size: 13.5, weight: .semibold))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            .frame(minWidth: 136, minHeight: 44)
+            .foregroundStyle(.primary)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.black.opacity(configuration.isPressed ? 0.05 : 0.0))
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(configuration.isPressed ? 0.88 : 0.62))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
             )
             .opacity(isEnabled ? 1.0 : 0.5)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
     }
 }
 
@@ -198,18 +219,18 @@ struct PaywallSecondaryButtonStyle: ButtonStyle {
         configuration.label
             .lineLimit(1)
             .minimumScaleFactor(0.85)
-            .font(.system(size: 13, weight: .medium))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 7)
-            .frame(minHeight: 36)
+            .font(.system(size: 14, weight: .semibold))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 9)
+            .frame(minWidth: 136, minHeight: 44)
             .foregroundStyle(.primary)
             .background(
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor).opacity(configuration.isPressed ? 0.80 : 0.42))
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(nsColor: .controlBackgroundColor).opacity(configuration.isPressed ? 0.88 : 0.70))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
             )
             .opacity(isEnabled ? 1.0 : 0.5)
             .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
@@ -223,10 +244,10 @@ struct PaywallPrimaryPurchaseButtonStyle: ButtonStyle {
         configuration.label
             .lineLimit(1)
             .minimumScaleFactor(0.85)
-            .font(.system(size: 14, weight: .semibold))
-            .padding(.horizontal, 18)
-            .padding(.vertical, 8)
-            .frame(minWidth: 132, maxWidth: 190, minHeight: 38)
+            .font(.system(size: 15, weight: .semibold))
+            .padding(.horizontal, 22)
+            .padding(.vertical, 9)
+            .frame(minWidth: 196, minHeight: 44)
             .foregroundStyle(.white)
             .background(
                 LinearGradient(
@@ -237,7 +258,7 @@ struct PaywallPrimaryPurchaseButtonStyle: ButtonStyle {
                     startPoint: .top,
                     endPoint: .bottom
                 ),
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
             )
             .shadow(
                 color: Color.accentColor.opacity(configuration.isPressed ? 0.12 : 0.22),
@@ -335,22 +356,13 @@ struct RiskBadgeView: View {
     let level: ArchiveRiskLevel?
 
     var body: some View {
-        let title: String
+        let title = L10n.riskBadgeTitle(for: level)
         let color: Color
-
         switch level {
-        case .high:
-            title = "HIGH RISK"
-            color = .red
-        case .medium:
-            title = "MEDIUM RISK"
-            color = .orange
-        case .notice:
-            title = "HIDDEN"
-            color = .secondary
-        case .none:
-            title = "RISK"
-            color = .orange
+        case .high: color = .red
+        case .medium: color = .orange
+        case .notice: color = .secondary
+        case .none: color = .orange
         }
 
         return Text(title)

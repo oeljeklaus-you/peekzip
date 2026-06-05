@@ -7,6 +7,7 @@ final class ArchiveStore: ObservableObject {
     static let shared = ArchiveStore()
 
     private let archiveService = ArchiveService()
+    private let purchaseManager = PurchaseManager.shared
     private var licenseCancellable: AnyCancellable?
 
     @Published var selectedArchiveURL: URL?
@@ -237,7 +238,10 @@ final class ArchiveStore: ObservableObject {
     }
 
     func filterCount(for filter: ArchiveFilter) -> Int {
-        filterCountsCache[filter] ?? 0
+        if filter == .riskyFiles {
+            return riskyFileCountValue
+        }
+        return filterCountsCache[filter] ?? 0
     }
 
     func riskFinding(for entry: ArchiveEntry) -> RiskFinding? {
@@ -353,10 +357,11 @@ final class ArchiveStore: ObservableObject {
             return L10n.string(.archiveEmptyHeroTitle)
         }
 
+        if riskyFileCountValue > 0 {
+            return String(format: L10n.string(.archiveSafetyRiskyFound), locale: .current, arguments: [riskyFileCountValue])
+        }
+
         if isPro {
-            if riskyFileCountValue > 0 {
-                return String(format: L10n.string(.archiveSafetyRiskyFound), locale: .current, arguments: [riskyFileCountValue])
-            }
             return L10n.string(.archiveSafetyNoRiskyDetected)
         }
 
@@ -695,14 +700,45 @@ final class ArchiveStore: ObservableObject {
         AppEventLogger.log("pro_paywall_shown", metadata: ["feature": feature.rawValue])
     }
 
-    func unlockProForTesting() {
-        LicenseManager.shared.unlockProForTesting()
-        activeProPaywallState = nil
+    func handleProUnlockRequest() async {
         AppEventLogger.log("pro_unlock_clicked")
+
+        do {
+            let outcome = try await purchaseManager.purchasePro()
+
+            switch outcome {
+            case .success:
+                AppEventLogger.iap("purchase flow completed: success")
+                activeProPaywallState = nil
+                showToast(L10n.string(.paywallPurchaseSucceeded))
+            case .pending:
+                AppEventLogger.iap("purchase flow completed: pending")
+                showToast(L10n.string(.paywallPurchasePending))
+            case .cancelled:
+                AppEventLogger.iap("purchase flow completed: cancelled")
+                break
+            }
+        } catch {
+            AppEventLogger.iap("purchase failed: \(error.localizedDescription)")
+            showToast(error.localizedDescription)
+        }
     }
 
-    func resetProForTesting() {
-        LicenseManager.shared.resetProForTesting()
+    func restorePurchases() async {
+        do {
+            let restored = try await purchaseManager.restorePurchases()
+            if restored {
+                AppEventLogger.iap("restore flow completed: restored")
+                activeProPaywallState = nil
+                showToast(L10n.string(.paywallRestoreSucceeded))
+            } else {
+                AppEventLogger.iap("restore flow completed: nothing found")
+                showToast(L10n.string(.paywallRestoreNothingFound))
+            }
+        } catch {
+            AppEventLogger.iap("restore failed: \(error.localizedDescription)")
+            showToast(error.localizedDescription)
+        }
     }
 
     func continueFreeFromPaywall() {
